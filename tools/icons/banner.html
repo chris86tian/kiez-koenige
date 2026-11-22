@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../../game/inter.css">
+<style>
+html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #0b1120; font-family: Inter, sans-serif; }
+svg { position: absolute; inset: 0; width: 1280px; height: 720px; }
+.t { position: absolute; left: 70px; top: 130px; color: #fff; }
+.logo { font-size: 132px; font-weight: 900; letter-spacing: -5px; line-height: 1.02; }
+.k2 { background: linear-gradient(90deg, #fde047, #f97316); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.sub { margin-top: 34px; font-size: 34px; font-weight: 800; color: #c7d2fe; }
+</style>
+</head><body>
+<script src="art.js"></script>
+<script>
+document.body.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 1280 720" xmlns="http://www.w3.org/2000/svg">' + DEFS +
+  '<rect width="1280" height="720" fill="url(#bg)"/>' + skyline(1060, 650, 1.25) + crown(1060, 205, 0.85) + '</svg>' +
+  '<div class="t"><div class="logo">KIEZ-<br><span class="k2">KÖNIGE</span></div><div class="sub">Tycoon-Duell für 2<br>Handy = Controller</div></div>');
+</script>
+</body></html>

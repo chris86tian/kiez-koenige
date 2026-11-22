@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1120">
+<title>Kiez-Könige · Controller</title>
+<link rel="stylesheet" href="/game/inter.css">
+<style>
+:root { --c: #22d3ee; --bg: #0b1120; --card: #16213a; --line: #2a3a5c; --mute: #a5b4cc; --good: #4ade80; --bad: #f87171; --gold: #facc15; }
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { background: var(--bg); color: #f8fafc; font-family: Inter, system-ui, sans-serif; font-size: 16px; min-height: 100%; }
+body { padding: 12px 12px calc(96px + env(safe-area-inset-bottom)); user-select: none; -webkit-user-select: none; }
+.top { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 16px; background: var(--card); border: 2px solid var(--c); }
+.top .nm { font-weight: 900; font-size: 19px; color: var(--c); flex: 1; }
+.top .cash { font-weight: 900; font-size: 22px; }
+.sub { font-size: 13px; color: var(--mute); font-weight: 600; }
+.row { display: flex; gap: 8px; align-items: center; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.chip { font-size: 13px; font-weight: 800; padding: 4px 10px; border-radius: 99px; background: #0b1220; border: 1px solid var(--line); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 12px; margin-top: 10px; }
+.map { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 10px; }
+.cell { aspect-ratio: 1; border-radius: 12px; border: 3px solid transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; position: relative; }
+.cell .lv { position: absolute; bottom: 2px; right: 5px; font-size: 10px; font-weight: 900; }
+.cell .tag { font-size: 9px; font-weight: 800; opacity: .75; }
+.cell.sel { outline: 4px solid #fff; outline-offset: 1px; }
+.cell.gap-r { margin-right: 6px; } .cell.gap-b { margin-bottom: 6px; }
+button { font: inherit; font-weight: 800; color: #fff; background: #1e293b; border: 2px solid var(--line); border-radius: 14px; padding: 12px; cursor: pointer; }
+button:active { transform: scale(.97); filter: brightness(1.2); }
+button.p { background: var(--c); border-color: var(--c); color: #0b1120; }
+button.gold { background: linear-gradient(135deg, #fde047, #f59e0b); border-color: #f59e0b; color: #1c1917; }
+button.dis { opacity: .4; }
+.sheet { position: fixed; inset: 0; background: rgba(3,7,18,.8); display: flex; align-items: flex-end; z-index: 40; padding: 12px; }
+.sheet .card { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.sheet button { padding: 16px; font-size: 18px; }
+button.red { background: #3b1219; border-color: #7f1d1d; color: #fecaca; }
+.blist { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.blist button { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 12px; }
+.blist .ico { font-size: 26px; width: 32px; text-align: center; }
+.blist .nm2 { flex: 1; }
+.blist .fc { font-size: 12px; text-align: right; color: var(--mute); }
+.price { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+.price button { width: 64px; height: 56px; font-size: 28px; }
+.price .v { flex: 1; text-align: center; font-size: 30px; font-weight: 900; }
+.stat { display: flex; justify-content: space-between; padding: 3px 0; font-size: 15px; }
+.foot { position: fixed; left: 0; right: 0; bottom: 0; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(11,17,32,.96); border-top: 1px solid var(--line); display: flex; gap: 8px; }
+.foot button { flex: 1; padding: 14px 6px; font-size: 15px; }
+.big { font-size: 44px; font-weight: 900; text-align: center; }
+.center { text-align: center; }
+.toast { position: fixed; left: 12px; right: 12px; top: 12px; background: #f8fafc; color: #0f172a; font-weight: 800; padding: 12px 14px; border-radius: 14px; transform: translateY(-140%); transition: transform .25s; z-index: 9; text-align: center; }
+.toast.on { transform: none; }
+.toast.bad { background: #fecaca; }
+.bar { height: 12px; background: #0b1220; border-radius: 99px; overflow: hidden; border: 1px solid var(--line); margin-top: 10px; }
+.bar i { display: block; height: 100%; background: linear-gradient(90deg, #fbbf24, #f97316); }
+.tip { font-size: 15px; margin-top: 6px; }
+.off { padding: 40px 10px; text-align: center; color: var(--mute); }
+</style>
+</head>
+<body>
+<div id="root"><div class="off">Verbinde mit dem Fernseher …</div></div>
+<div id="toast" class="toast"></div>
+<script src="/game/data.js"></script>
+<script>
+(function () {
+    var K = window.KKDATA;
+    var P = +(new URLSearchParams(location.search).get('p') || 1);
+    var S = null, lastMsg = 0, lastJson = '', fails = 0, confirmSell = -1, bankOpen = false;
+    var root = document.getElementById('root');
+
+    function eur(n) { var neg = n < 0; n = Math.abs(Math.round(n)); return (neg ? '−' : '') + String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' €'; }
+    function sgn(n) { return (n >= 0 ? '+' : '−') + eur(Math.abs(n)); }
+    function pr(x) { return x.toFixed(2).replace('.', ',') + ' €'; }
+    function esc(t) { return String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function send(o) { o.p = P; fetch('/api/in', { method: 'POST', body: JSON.stringify(o), headers: { 'Content-Type': 'application/json' } }).catch(function () { }); }
+    var tt = null;
+    function toast(m, bad) { var el = document.getElementById('toast'); el.textContent = m; el.className = 'toast on' + (bad ? ' bad' : ''); clearTimeout(tt); tt = setTimeout(function () { el.className = 'toast'; }, 2200); }
+    function buzz(ms) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } }
+
+    function poll() {
+        fetch('/api/state?p=' + P, { cache: 'no-store' }).then(function (r) { return r.text(); }).then(function (t) {
+            fails = 0;
+            if (t !== lastJson) { lastJson = t; try { S = JSON.parse(t); } catch (e) { S = {}; } render(); }
+        }).catch(function () { fails++; if (fails > 6) root.innerHTML = '<div class="off">Keine Verbindung zum Fernseher.<br>Gleiches WLAN? Ist das Spiel am Fernseher offen?</div>'; });
+    }
+    send({ cmd: 'hello' });
+    setInterval(poll, 350); poll();
+
+    function plotName(id) { var p = K.plots[id]; return K.districts[p.d].short + ' ' + 'ABCD'[p.gy] + (p.gx + 1); }
+
+    function render() {
+        if (!S || !S.phase || !S.me) {
+            var ph = S && S.phase;
+            root.innerHTML = '<div class="off"><div style="font-size:60px">📺</div><h2>Verbunden ✓</h2><p style="margin-top:8px">Du bist <b>Spieler ' + P + '</b>.<br>' + (ph === 'setup' || ph === 'title' || !ph ? 'Das Spiel wird am Fernseher gestartet.' : 'Gleich geht’s los …') + '</p></div>';
+            return;
+        }
+        var me = S.me;
+        document.documentElement.style.setProperty('--c', me.color);
+        if (S.msg && S.msg.n !== lastMsg) { if (lastMsg) { toast(S.msg.text, !S.msg.ok); buzz(S.msg.ok ? 25 : [40, 40, 40]); } lastMsg = S.msg.n; }
+        var w = K.weather[S.weather], f = K.weather[S.forecast];
+        var h = '<div class="top"><div class="nm">' + esc(me.name) + '<div class="sub">Tag ' + S.day + '/' + S.days + ' · ' + S.dow + '</div></div><div style="text-align:right"><div class="cash">' + eur(me.cash) + '</div><div class="sub">Vermögen ' + eur(me.wealth) + '</div></div></div>';
+        h += '<div class="chips"><span class="chip">' + w.icon + ' ' + w.name + '</span><span class="chip">morgen ' + f.icon + '</span>' + (me.mkt ? '<span class="chip">📣 ' + me.mkt + ' T.</span>' : '') + (me.loan ? '<span class="chip" style="color:#fca5a5">Kredit ' + eur(me.loan) + '</span>' : '') +
+            '<span class="chip" style="color:' + S.rival.color + '">' + esc(S.rival.name) + ': ' + eur(S.rival.wealth) + '</span>' + (S.timeLeft !== null && S.phase === 'plan' ? '<span class="chip">⏱ ' + S.timeLeft + ' s</span>' : '') + '</div>';
+        if (S.event && S.phase === 'plan') h += '<div class="card" style="border-color:#854d0e"><b>' + S.event.icon + ' ' + esc(S.event.title) + '</b><div class="sub" style="margin-top:4px">' + esc(S.event.text) + '</div></div>';
+        var foot = '';
+
+        if (S.phase === 'plan' && S.control !== 'phones') {
+            h += '<div class="off">Diese Partie wird mit der <b>Fernbedienung</b> gespielt.<br>Schau auf den Fernseher 📺</div>';
+        } else if (S.phase === 'plan') {
+            h += mapHtml();
+            h += plotHtml();
+            if (bankOpen) h += '<div class="sheet"><div class="card"><h2>🏦 Bank</h2><p class="sub" style="margin:6px 0 12px">Kredit: <b>' + eur(me.loan) + '</b> von max. ' + eur(K.loanMax) + ' · 0,5 % Zinsen pro Tag</p>' +
+                '<button class="gold' + (me.loan >= K.loanMax ? ' dis' : '') + '" data-c="loan">+ ' + eur(K.loanStep) + ' leihen</button>' +
+                '<button class="' + (!me.loan || me.cash < Math.min(me.loan, K.loanStep) ? 'dis' : '') + '" data-c="repay">' + eur(Math.min(me.loan || K.loanStep, K.loanStep)) + ' zurückzahlen</button>' +
+                '<button data-c="bankclose">Schließen</button></div></div>';
+            foot = '<button class="' + (me.mkt ? 'dis' : '') + '" data-c="marketing">📣 Werbung<br><span class="sub">' + eur(K.marketing.cost) + '</span></button>' +
+                '<button data-c="bank">🏦 Bank<br><span class="sub">' + (me.loan ? 'Kredit ' + eur(me.loan) : '+' + eur(K.loanStep)) + '</span></button>' +
+                (me.ready ? '<button data-c="unready">✓ Fertig<br><span class="sub">tippen = weiter planen</span></button>' : '<button class="gold" data-c="ready">Fertig ✓<br><span class="sub">Tag starten</span></button>');
+        } else if (S.phase === 'day') {
+            var t = S.live ? S.live.t : 0;
+            h += '<div class="card center"><div class="sub">Umsatz heute</div><div class="big">' + eur(S.live ? S.live.rev : 0) + '</div><div class="bar"><i style="width:' + (t * 100) + '%"></i></div><p style="margin-top:12px">Schau auf den Fernseher – deine Kundschaft ist unterwegs! 🚶‍♀️🚶</p></div>';
+        } else if (S.phase === 'evening') {
+            var r = S.report || { rev: 0, profit: 0, tips: [] };
+            h += '<div class="card center"><div class="sub">Gewinn heute</div><div class="big" style="color:' + (r.profit >= 0 ? 'var(--good)' : 'var(--bad)') + '">' + sgn(r.profit) + '</div><div class="sub">Umsatz ' + eur(r.rev) + ' · ' + r.sales + ' Kunden' + (r.lost ? ' · ' + r.lost + ' leer ausgegangen' : '') + '</div></div>' +
+                (r.tips.length ? '<div class="card">' + r.tips.map(function (x) { return '<div class="tip">💡 ' + esc(x) + '</div>'; }).join('') + '</div>' : '');
+            foot = '<button class="gold" data-c="next">Weiter ☀️</button>';
+        } else if (S.phase === 'end') {
+            h += '<div class="off" style="color:#fff"><div style="font-size:80px">' + (S.win === 'win' ? '👑' : S.win === 'draw' ? '🤝' : '💪') + '</div><h2>' + (S.win === 'win' ? 'Du bist Kiez-König!' : S.win === 'draw' ? 'Unentschieden!' : 'Knapp vorbei – Revanche?') + '</h2><p style="margin-top:8px">Vermögen: <b>' + eur(me.wealth) + '</b></p></div>';
+            foot = '<button class="gold" data-c="next">Revanche! 🔁</button>';
+        } else if (S.phase === 'lobby') {
+            h += '<div class="off" style="color:#fff"><div style="font-size:60px">✅</div><h2>Verbunden!</h2><p style="margin-top:8px">Warte auf die anderen …</p></div>';
+            foot = '<button class="gold" data-c="next">Spiel starten ▶</button>';
+        } else {
+            h += '<div class="off">Schau auf den Fernseher 📺</div>';
+        }
+        root.innerHTML = h;
+        var fe = document.querySelector('.foot');
+        if (foot) { if (!fe) { fe = document.createElement('div'); fe.className = 'foot'; document.body.appendChild(fe); } fe.innerHTML = foot; }
+        else if (fe) fe.remove();
+    }
+
+    function mapHtml() {
+        var me = S.me, out = '<div class="map">';
+        S.plots.forEach(function (pl, i) {
+            var kp = K.plots[i], D = K.districts[kp.d];
+            var bg = pl.owner >= 0 ? (pl.owner === me.i ? me.color : S.rival.color) : D.ground;
+            var style = 'background:' + (pl.owner >= 0 ? bg + '33' : D.ground) + ';border-color:' + (pl.owner >= 0 ? bg : D.color + '55');
+            var cls = 'cell' + (me.sel === i ? ' sel' : '') + (kp.gx === 1 ? ' gap-r' : '') + (kp.gy === 1 ? ' gap-b' : '');
+            out += '<div class="' + cls + '" style="' + style + '" data-sel="' + i + '">' + (pl.type ? K.types[pl.type].icon + '<span class="lv" style="color:' + bg + '">' + '★'.repeat(pl.level + 1) + '</span>' : '<span class="tag" style="color:' + D.color + '">' + D.short + '</span><span style="font-size:18px;opacity:.6">＋</span>') + '</div>';
+        });
+        return out + '</div>';
+    }
+    function plotHtml() {
+        var me = S.me, id = me.sel, pl = S.plots[id], kp = K.plots[id], D = K.districts[kp.d];
+        var h = '<div class="card"><div class="row" style="justify-content:space-between"><b style="font-size:18px">' + plotName(id) + (kp.corner ? ' · Ecke' : '') + '</b><span class="chip" style="color:' + D.color + '">' + D.name + '</span></div><div class="sub" style="margin-top:3px">' + D.who + ' · ' + D.hint + '</div>';
+        if (pl.owner === -1) {
+            h += '<div class="blist">' + K.typeOrder.map(function (t) {
+                var ty = K.types[t], fc = S.forecast2 && S.forecast2[t], poor = me.cash < ty.build;
+                return '<button class="' + (poor ? 'dis' : '') + '" data-c="build" data-t="' + t + '"><span class="ico">' + ty.icon + '</span><span class="nm2">' + ty.name + '<br><span class="sub">' + eur(ty.build) + '</span></span><span class="fc">' + (fc ? '~' + fc.sales + ' Kunden<br><b style="color:' + (fc.profit >= 0 ? 'var(--good)' : 'var(--bad)') + '">' + sgn(fc.profit) + '/Tag</b>' : '') + '</span></button>';
+            }).join('') + '</div>';
+        } else if (pl.owner === me.i) {
+            var t = K.types[pl.type], l = pl.last, up = pl.level < 2 ? t.up[pl.level] : null;
+            h += '<div class="row" style="margin-top:8px"><span style="font-size:36px">' + t.icon + '</span><div><b style="font-size:18px">' + t.name + '</b><div class="sub">' + K.levelNames[pl.level] + ' · bis ' + t.cap[pl.level] + ' Kunden/Tag</div></div></div>' +
+                '<div class="price"><button data-c="price" data-d="-1">−</button><div class="v">' + pr(pl.price) + '<div class="sub">üblich ' + pr(t.ref) + '</div></div><button data-c="price" data-d="1">+</button></div>' +
+                (l ? '<div class="stat"><span>Gestern verkauft</span><b>' + l.sales + ' / ' + l.cap + '</b></div>' + (l.lost ? '<div class="stat"><span>Leer ausgegangen</span><b style="color:var(--bad)">' + l.lost + '</b></div>' : '') + '<div class="stat"><span>Gewinn gestern</span><b style="color:' + (l.profit >= 0 ? 'var(--good)' : 'var(--bad)') + '">' + sgn(l.profit) + '</b></div>' : '<div class="sub">Öffnet heute zum ersten Mal.</div>') +
+                '<div class="row" style="margin-top:10px"><button style="flex:1.4" class="' + (up === null || me.cash < up ? 'dis' : 'p') + '" data-c="upgrade">' + (up === null ? 'Voll ausgebaut' : 'Ausbauen ' + eur(up)) + '</button>' +
+                '<button style="flex:1" class="red" data-c="sell">' + (confirmSell === id ? 'Wirklich? ✓' : 'Verkaufen') + '</button></div>';
+        } else {
+            var tt = K.types[pl.type];
+            h += '<div class="row" style="margin-top:8px"><span style="font-size:36px">' + tt.icon + '</span><div><b style="color:' + S.rival.color + '">' + tt.name + ' von ' + esc(S.rival.name) + '</b><div class="sub">' + K.levelNames[pl.level] + ' · ' + pr(pl.price) + (pl.last ? ' · gestern ' + pl.last.sales + ' Kunden' : '') + '</div></div></div>';
+        }
+        return h + '</div>';
+    }
+
+    document.addEventListener('click', function (e) {
+        var c = e.target.closest('[data-sel]');
+        if (c) { var id = +c.getAttribute('data-sel'); S.me.sel = id; confirmSell = -1; send({ cmd: 'sel', plot: id }); render(); buzz(10); return; }
+        var b = e.target.closest('[data-c]'); if (!b) return;
+        var cmd = b.getAttribute('data-c'), sel = S && S.me ? S.me.sel : 0;
+        if (b.classList.contains('dis')) { if (cmd === 'loan' || cmd === 'repay') { toast(cmd === 'loan' ? 'Mehr Kredit gibt die Bank nicht.' : 'Nichts zu tilgen oder zu wenig Geld.', true); return; } toast(cmd === 'build' ? 'Zu wenig Geld – Kredit gibt es bei der Bank.' : 'Geht gerade nicht.', true); buzz([40, 40, 40]); return; }
+        if (cmd === 'build') send({ cmd: 'build', plot: sel, type: b.getAttribute('data-t') });
+        else if (cmd === 'price') send({ cmd: 'price', plot: sel, d: +b.getAttribute('data-d') });
+        else if (cmd === 'upgrade') send({ cmd: 'upgrade', plot: sel });
+        else if (cmd === 'sell') { if (confirmSell === sel) { send({ cmd: 'sell', plot: sel }); confirmSell = -1; } else { confirmSell = sel; render(); return; } }
+        else if (cmd === 'bank') { bankOpen = true; render(); }
+        else if (cmd === 'bankclose') { bankOpen = false; render(); return; }
+        else if (cmd === 'loan' || cmd === 'repay') { send({ cmd: cmd }); bankOpen = false; render(); }
+        else send({ cmd: cmd });
+        buzz(15);
+    });
+})();
+</script>
+</body>
+</html>
