@@ -3,7 +3,7 @@
     'use strict';
     var K = {};
 
-    K.version = '1.0';
+    K.version = '1.1';
     K.startCash = 20000;
     K.loanStep = 10000;
     K.loanMax = 30000;
@@ -18,16 +18,21 @@
         { name: 'Spieler 1', color: '#22d3ee' },
         { name: 'Spieler 2', color: '#f472b6' }
     ];
+    K.looks = {
+        hats: [['cap', '🧢', 'Kappe'], ['hair', '💇', 'Frisur'], ['top', '🎩', 'Zylinder'], ['party', '🥳', 'Partyhut'], ['ears', '🐱', 'Katzenohren'], ['none', '🙂', 'Ohne']],
+        faces: [['smile', '🙂', 'Lächeln'], ['cool', '😎', 'Cool'], ['grin', '😁', 'Grinsen'], ['wink', '😉', 'Zwinkern']],
+        skins: ['#f1c27d', '#ffdbac', '#c68642', '#8d5524']
+    };
 
     /* Vier Viertel als 2 × 2-Raster: 0 Altstadt (links oben), 1 Uni (rechts oben), 2 Büro (links unten), 3 Wohnen (rechts unten) */
     K.districts = [
-        { id: 'altstadt', name: 'Altstadt', short: 'Altstadt', color: '#f59e0b', ground: '#4a3a26', traffic: 3400, rent: 1.5, sens: 0.8, weekend: 1.35,
+        { id: 'altstadt', name: 'Altstadt', short: 'Altstadt', color: '#f59e0b', ground: '#4a3a26', plastic: '#f6b44e', traffic: 3400, rent: 1.5, sens: 0.8, weekend: 1.35,
             who: 'Touristen & Bummler', hint: 'Viel Laufkundschaft, hohe Pacht. Eis und Café laufen hier super.' },
-        { id: 'uni', name: 'Uni-Viertel', short: 'Uni', color: '#22d3ee', ground: '#1f3d4a', traffic: 3200, rent: 0.8, sens: 1.6, weekend: 0.6,
+        { id: 'uni', name: 'Uni-Viertel', short: 'Uni', color: '#22d3ee', ground: '#1f3d4a', plastic: '#4fc3e8', traffic: 3200, rent: 0.8, sens: 1.6, weekend: 0.6,
             who: 'Studierende', hint: 'Sehr preisbewusst! Günstiger Kiosk, Imbiss und Gaming sind gefragt.' },
-        { id: 'buero', name: 'Büropark', short: 'Büro', color: '#a78bfa', ground: '#33304a', traffic: 3000, rent: 1.2, sens: 0.7, weekend: 0.25,
+        { id: 'buero', name: 'Büropark', short: 'Büro', color: '#a78bfa', ground: '#33304a', plastic: '#a993f0', traffic: 3000, rent: 1.2, sens: 0.7, weekend: 0.25,
             who: 'Büroleute', hint: 'Zahlen gern mehr – aber am Wochenende ist es leer.' },
-        { id: 'wohn', name: 'Wohngebiet', short: 'Wohnen', color: '#4ade80', ground: '#24432f', traffic: 2800, rent: 0.7, sens: 1.1, weekend: 1.4,
+        { id: 'wohn', name: 'Wohngebiet', short: 'Wohnen', color: '#4ade80', ground: '#24432f', plastic: '#7fd88a', traffic: 2800, rent: 0.7, sens: 1.1, weekend: 1.4,
             who: 'Familien', hint: 'Günstige Pacht, am Wochenende viel los. Eis und Fitness mögen Familien.' }
     ];
     K.neighbors = { 0: [1, 2], 1: [0, 3], 2: [0, 3], 3: [1, 2] };

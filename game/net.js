@@ -12,7 +12,8 @@
             N.ok = true; N.ip = j.ip; N.port = j.port; cb(true);
         }).catch(function () { cb(false); });
     };
-    N.url = function (p) { return 'http://' + N.ip + ':' + N.port + '/c/?p=' + p; };
+    N.url = function (p) { return 'http://' + N.ip + ':' + N.port + '/' + p; };
+    N.short = function (p) { return N.ip + ':' + N.port + '/' + p; };
     N.start = function (handler) {
         N.handler = handler;
         if (!N.ok || N.loop) return;

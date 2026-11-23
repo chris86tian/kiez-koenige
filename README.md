@@ -10,9 +10,27 @@ APK herunterladen: **[KiezKoenige-FireTV.apk](https://github.com/chris86tian/kie
 
 ## Screenshots
 
-| Titel | Planung (Handys) | Der Tag läuft |
+| Titel | Avatare | Der Tag läuft |
 |---|---|---|
-| ![Titel](docs/title.jpg) | ![Planung](docs/planung.jpg) | ![Tag](docs/tag.jpg) |
+| ![Titel](docs/title.jpg) | ![Avatare](docs/avatare.jpg) | ![Tag](docs/tag.jpg) |
+
+| Siegerehrung | Handy-Controller |
+|---|---|
+| ![Finale](docs/finale.jpg) | <img src="docs/handy.jpg" width="220" alt="Handy"> |
+
+## Neu in 1.1: Klötzchen-Look
+
+- **Bunte Noppen-Stadt:** Plastikplatten mit Noppen, Klötzchen-Bäume, -Wolken und -Brunnen
+- **Block-Figuren:** Die Kundschaft läuft mit schwingenden Armen und Beinen durch die Viertel
+- **Eigene Avatare:** Hut, Gesicht und Hautfarbe wählen – am Handy in der Lobby oder am TV unter „🎨 Avatare“. Euer Avatar läuft zum Grundstück, das ihr gerade plant, jubelt bei neuen Läden und trägt am Ende die Krone
+- **12 Abzeichen:** Erster Laden, Ladenkette, Ausverkauft!, 1.000 € an einem Tag, Schuldenfrei, Kiez-König …
+- **Verbinden leichter gemacht:** kurze Adresse (`IP:8090/1`), größerer QR-Code mit breitem Rand, Adresse groß zum Abtippen
+
+### QR-Code klappt nicht?
+
+1. Handy im **gleichen WLAN** wie der Fire TV (kein Gäste-WLAN, kein mobiles Internet).
+2. Kamera-App auf den QR-Code richten und den Link antippen.
+3. Alternativ die weiße Adresse unter dem QR-Code im Browser eintippen, z. B. `192.168.1.50:8090/1`.
 
 ## Steuerung
 

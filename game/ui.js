@@ -4,7 +4,7 @@
     var K = window.KKDATA, S = window.KKSIM, C = window.KK3D, N = window.KKNET;
     var app = document.getElementById('app');
     var ST = null;                       // Spielstand
-    var OPT = { control: 'phones', p2: 'human', days: 20 };
+    var OPT = { control: 'phones', p2: 'human', days: 20, looks: [{ hat: 'cap', face: 'smile', skin: 0 }, { hat: 'hair', face: 'grin', skin: 1 }] };
     var sel = [5, 6];                    // gewähltes Grundstück je Spieler
     var msgs = [null, null];             // letzte Rückmeldung je Spieler (fürs Handy)
     var logs = [[], []];                 // Aktionsprotokoll je Spieler (für den TV im Handy-Modus)
@@ -27,6 +27,7 @@
     function isCpu(pi) { return ST && ST.players[pi].cpu; }
     function save() { try { if (ST && ST.phase !== 'end') localStorage.setItem(SAVE, JSON.stringify({ st: ST, opt: OPT, sel: sel })); } catch (e) { } }
     function loadSave() { try { var t = localStorage.getItem(SAVE); return t ? JSON.parse(t) : null; } catch (e) { return null; } }
+    try { var lk = JSON.parse(localStorage.getItem('kk_looks') || 'null'); if (lk && lk.length === 2) OPT.looks = lk; } catch (e) { }
     function clearSave() { try { localStorage.removeItem(SAVE); } catch (e) { } }
 
     /* ================= Bild an jede Größe anpassen ================= */
@@ -55,8 +56,10 @@
         else if (k === 'click') tone(880, 0.07, 'triangle', 0.06);
         else if (k === 'no') { tone(220, 0.12, 'square', 0.04); tone(180, 0.14, 'square', 0.04, 0.09); }
         else if (k === 'coin') { tone(988, 0.08, 'triangle', 0.06); tone(1319, 0.2, 'triangle', 0.06, 0.07); }
-        else if (k === 'build') { [392, 523, 659].forEach(function (f, i) { tone(f, 0.18, 'triangle', 0.07, i * 0.08); }); }
+        else if (k === 'build') { [392, 523, 659, 784].forEach(function (f, i) { tone(f, 0.12, 'square', 0.035, i * 0.06); }); tone(1047, 0.25, 'triangle', 0.06, 0.26); }
         else if (k === 'win') { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.25, 'triangle', 0.07, i * 0.11); }); }
+        else if (k === 'badge') { [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, 0.22, 'square', 0.035, i * 0.07); }); }
+        else if (k === 'pop') { tone(520, 0.06, 'square', 0.04); tone(780, 0.09, 'triangle', 0.06, 0.05); }
         else if (k === 'bell') { tone(1568, 0.4, 'sine', 0.06); tone(2093, 0.5, 'sine', 0.04, 0.1); }
     }
     var toastT = null;
@@ -134,11 +137,103 @@
         app.querySelector('.screen').appendChild(m);
         setFocus(m.querySelector('[data-auto]') || m.querySelector('[data-f]'));
     }
-    function closeModal() { var m = app.querySelector('.modal'); if (m) { m.remove(); setFocus(modalPrev && modalPrev.isConnected ? modalPrev : first()); } }
+    function closeModal() { C.closeup && C.closeup(false); var m = app.querySelector('.modal'); if (m) { m.remove(); setFocus(modalPrev && modalPrev.isConnected ? modalPrev : first()); } }
     H.close = function () { closeModal(); };
 
     /* ================= QR ================= */
-    function qr(text) { if (!window.qrcode) return ''; var q = window.qrcode(0, 'M'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 6, margin: 1, scalable: true }); }
+    function qr(text) { if (!window.qrcode) return ''; var q = window.qrcode(0, 'L'); q.addData(text); q.make(); return q.createSvgTag({ cellSize: 8, margin: 32, scalable: true }); /* Rand 32 px = 4 Module */ }
+
+    /* ================= Looks (Avatare) ================= */
+    function lookOf(pi) { var l = (OPT.looks && OPT.looks[pi]) || {}; return { hat: l.hat || 'cap', face: l.face || 'smile', skin: l.skin | 0 }; }
+    function applyLooks() {
+        [0, 1].forEach(function (i) {
+            C.avatar(i, lookOf(i));
+            C.avatarName && C.avatarName(i, ST ? ST.players[i].name : K.players[i].name);
+        });
+    }
+    function setLook(pi, key, val) {
+        var L = K.looks, l = lookOf(pi);
+        if (key === 'hat' && L.hats.some(function (h) { return h[0] === val; })) l.hat = val;
+        else if (key === 'face' && L.faces.some(function (h) { return h[0] === val; })) l.face = val;
+        else if (key === 'skin' && +val >= 0 && +val < L.skins.length) l.skin = +val;
+        else return false;
+        OPT.looks = OPT.looks || [{}, {}]; OPT.looks[pi] = l; applyLooks(); C.cheer(pi); save();
+        try { localStorage.setItem('kk_looks', JSON.stringify(OPT.looks)); } catch (e) { }
+        return true;
+    }
+    function lookName(list, id) { for (var i = 0; i < list.length; i++) if (list[i][0] === id) return list[i]; return list[0]; }
+    function cycle(list, id) { for (var i = 0; i < list.length; i++) if (list[i][0] === id) return list[(i + 1) % list.length][0]; return list[0][0]; }
+    H.looks = function () { looksModal(null); };
+    function looksModal(keep) {
+        var L = K.looks;
+        function row(pi) {
+            var l = lookOf(pi), h = lookName(L.hats, l.hat), f = lookName(L.faces, l.face);
+            return '<div class="lookrow"><b style="width:130px;color:' + K.players[pi].color + '">' + esc(K.players[pi].name) + '</b>' +
+                btn('<span style="font-size:30px">' + h[1] + '</span><span class="sub">' + h[2] + '</span>', 'look', pi + '|hat') +
+                btn('<span style="font-size:30px">' + f[1] + '</span><span class="sub">' + f[2] + '</span>', 'look', pi + '|face') +
+                btn('<span style="display:inline-block;width:30px;height:30px;border-radius:8px;border:3px solid #15151f;background:' + L.skins[l.skin] + '"></span><span class="sub">Hautfarbe</span>', 'look', pi + '|skin') + '</div>';
+        }
+        modal('<h2>🎨 Eure Avatare</h2><div class="mute">OK drücken = nächster Hut, nächstes Gesicht, nächste Farbe. Schaut auf die Figuren in der Stadt!</div>' + row(0) + row(1) +
+            '<div class="row" style="justify-content:flex-end">' + btn('Fertig', 'close', null, { cls: 'gold', auto: !keep }) + '</div>');
+        var md = app.querySelector('.modal'); if (md) md.classList.add('side');
+        C.closeup(true);
+        if (keep) { var el = app.querySelector('.modal [data-key="' + keep + '"]'); if (el) setFocus(el); }
+    }
+    H.look = function (v, el) {
+        var a = v.split('|'), pi = +a[0], k = a[1], l = lookOf(pi), L = K.looks;
+        if (k === 'hat') setLook(pi, 'hat', cycle(L.hats, l.hat));
+        else if (k === 'face') setLook(pi, 'face', cycle(L.faces, l.face));
+        else setLook(pi, 'skin', (l.skin + 1) % L.skins.length);
+        sfx('pop');
+        looksModal(el.getAttribute('data-key'));
+    };
+
+    /* ================= Abzeichen ================= */
+    var BADGES = [
+        ['first', '🏪', 'Erster Laden', function (pi) { return S.shopsOf(ST, pi).length >= 1; }],
+        ['chain', '🏙️', 'Ladenkette: 3 Läden', function (pi) { return S.shopsOf(ST, pi).length >= 3; }],
+        ['all4', '🗺️', 'In allen 4 Vierteln', function (pi) { var d = {}; S.shopsOf(ST, pi).forEach(function (pl) { d[K.plots[pl.id].d] = 1; }); return Object.keys(d).length >= 4; }],
+        ['up', '⬆️', 'Erster Ausbau', function (pi) { return S.shopsOf(ST, pi).some(function (pl) { return pl.level >= 1; }); }],
+        ['mega', '🏰', 'Mega-Laden (Stufe 3)', function (pi) { return S.shopsOf(ST, pi).some(function (pl) { return pl.level >= 2; }); }],
+        ['ad', '📣', 'Werbeprofi', function (pi, p) { return p.mkt > 0; }],
+        ['sold', '🔥', 'Ausverkauft!', function (pi, p, x) { return x.report && ST.report.players[pi].lost > 0; }],
+        ['k1', '💰', '1.000 € Gewinn an einem Tag', function (pi, p, x) { return x.report && ST.report.players[pi].profit >= 1000; }],
+        ['k5', '💎', '5.000 € Gewinn an einem Tag', function (pi, p, x) { return x.report && ST.report.players[pi].profit >= 5000; }],
+        ['free', '🏦', 'Schuldenfrei', function (pi, p) { return p.loanSeen && p.loan === 0; }],
+        ['rich', '🤑', '100.000 € Vermögen', function (pi) { return S.wealth(ST, pi) >= 100000; }],
+        ['king', '👑', 'Kiez-König', function (pi, p, x) { return x.win === pi; }]
+    ];
+    var badgeQ = [], badgeBusy = false;
+    function checkBadges(pi, x) {
+        if (!ST) return;
+        var p = ST.players[pi]; x = x || {};
+        p.badges = p.badges || [];
+        if (p.loan > 0) p.loanSeen = true;
+        BADGES.forEach(function (b) {
+            if (p.badges.indexOf(b[0]) >= 0 || !b[3](pi, p, x)) return;
+            p.badges.push(b[0]);
+            if (!p.cpu) badgeQ.push({ pi: pi, b: b });
+        });
+        showBadge();
+    }
+    function badgeOf(id) { for (var i = 0; i < BADGES.length; i++) if (BADGES[i][0] === id) return BADGES[i]; return null; }
+    function showBadge() {
+        if (badgeBusy || !badgeQ.length) return;
+        var it = badgeQ.shift(), el = document.getElementById('badge'), p = ST ? ST.players[it.pi] : K.players[it.pi];
+        badgeBusy = true;
+        el.innerHTML = '<div class="bi">' + it.b[1] + '</div><div><div class="bk">🏅 Abzeichen!</div><div class="bn">' + esc(it.b[2]) + '</div><div class="bp" style="color:' + shade(p.color) + '">' + esc(p.name) + '</div></div>';
+        el.classList.add('on'); sfx('badge'); C.cheer(it.pi);
+        setTimeout(function () { el.classList.remove('on'); setTimeout(function () { badgeBusy = false; showBadge(); }, 400); }, 2600);
+    }
+    function shade(c) { return c === '#22d3ee' ? '#0e7490' : c === '#f472b6' ? '#be185d' : '#15151f'; }
+    function badgeRow(pi) {
+        var bs = (ST.players[pi].badges || []).map(badgeOf).filter(Boolean);
+        return bs.length ? '<div class="badges">' + bs.map(function (b) { return '<span title="' + esc(b[2]) + '">' + b[1] + '</span>'; }).join('') + '</div>' : '';
+    }
+    function logoHtml() {
+        function word(w, cls) { return '<span class="' + cls + '">' + w.split('').map(function (c) { return '<span class="lt">' + c + '</span>'; }).join('') + '</span>'; }
+        return '<div class="logo">' + word('KIEZ', 'k1') + '<br>' + word('KÖNIGE', 'k2') + '</div>';
+    }
 
     /* ================= Titel ================= */
     function demoCity() {
@@ -150,22 +245,22 @@
     }
     function title() {
         phase = 'title'; ST = null;
-        C.sync(demoCity()); C.setWeather('sun'); C.setTime(0.35);
+        C.sync(demoCity()); C.setWeather('sun'); C.setTime(0.35); applyLooks();
         var sv = loadSave();
         var html = '<div class="shade"></div><div class="col grow" style="width:560px;justify-content:center;gap:20px;position:relative">' +
-            '<div class="logo"><span class="k1">KIEZ-</span><br><span class="k2">KÖNIGE</span></div>' +
+            logoHtml() +
             '<div class="big mute" style="font-weight:600">Das Tycoon-Duell: Wer baut das reichste Geschäfts-Imperium der Stadt?</div>' +
             '<div class="col" style="width:440px;gap:12px">' +
             (sv ? btn('Weiterspielen <span class="sub">Tag ' + Math.min(sv.st.days, sv.st.day + (sv.st.phase === 'evening' ? 1 : 0)) + ' von ' + sv.st.days + '</span>', 'resume', null, { cls: 'gold', auto: true, style: 'width:100%' }) : '') +
             btn('Neues Spiel', 'setup', null, { cls: sv ? '' : 'gold', auto: !sv, style: 'width:100%' }) +
-            btn('So geht\'s', 'help', null, { style: 'width:100%' }) +
+            '<div class="row" style="gap:12px">' + btn('🎨 Avatare', 'looks', null, { style: 'flex:1;justify-content:center' }) + btn('So geht\'s', 'help', null, { style: 'flex:1;justify-content:center' }) + '</div>' +
             '</div></div>';
         show(html, { three: 'title', back: function () { return false; } });
     }
     H.title = function () { title(); };
     H.resume = function () {
         var sv = loadSave(); if (!sv) return title();
-        ST = sv.st; OPT = sv.opt; sel = sv.sel || [5, 6];
+        ST = sv.st; sv.opt.looks = OPT.looks; OPT = sv.opt; sel = sv.sel || [5, 6]; applyLooks();
         if (ST.phase === 'evening') { // Tag war schon abgerechnet → direkt zum nächsten Morgen
             if (S.bankrupt(ST) >= 0 || ST.day >= ST.days) { ST.phase = 'end'; return finale(); }
             S.nextMorning(ST);
@@ -199,7 +294,7 @@
             opt('Spieler 2', 'p2', [['human', '🙂 Mensch', 'zu zweit'], ['cpu-easy', '🤖 Computer', 'leicht'], ['cpu', '🤖 Computer', 'stark']]) +
             opt('Spieldauer', 'days', [[10, '10 Tage', '~20 Min.'], [20, '20 Tage', '~40 Min.'], [30, '30 Tage', '~60 Min.']]) +
             (OPT.control === 'phones' && !phonesOk ? '<div class="card" style="border-color:#7f1d1d;width:760px">Der Handy-Modus braucht die Kiez-Könige-App auf dem Fernseher (oder den Test-Server). Wähle sonst „Fernbedienung“.</div>' : '') +
-            '<div class="row" style="gap:16px;margin-top:8px">' + btn('Los geht\'s!', 'start', null, { cls: 'gold', auto: true, dis: OPT.control === 'phones' && !phonesOk, why: 'Handy-Modus hier nicht verfügbar.' }) + btn('Zurück', 'title') + '</div>' +
+            '<div class="row" style="gap:16px;margin-top:8px">' + btn('Los geht\'s!', 'start', null, { cls: 'gold', auto: true, dis: OPT.control === 'phones' && !phonesOk, why: 'Handy-Modus hier nicht verfügbar.' }) + btn('🎨 Avatare', 'looks') + btn('Zurück', 'title') + '</div>' +
             '</div>';
         show(html, { three: 'title', back: title, keep: ctx.keep });
     }
@@ -210,7 +305,7 @@
     H.start = function () {
         var cpu2 = OPT.p2 !== 'human';
         ST = S.newGame({ mode: OPT.control, days: OPT.days, cpu: [false, cpu2], cpuLevel: OPT.p2 === 'cpu-easy' ? 'easy' : 'normal' }, (Date.now() ^ Math.floor(Math.random() * 1e9)) >>> 0);
-        sel = [5, 6]; msgs = [null, null]; logs = [[], []];
+        sel = [5, 6]; msgs = [null, null]; logs = [[], []]; applyLooks();
         if (OPT.control === 'phones') lobby(false); else planStart();
     };
 
@@ -221,16 +316,16 @@
         var need = isCpu(1) ? [1] : [1, 2];
         function card(p) {
             var pl = ST.players[p - 1];
-            return '<div class="card col center" style="gap:12px;border-color:' + pl.color + ';width:340px">' +
+            return '<div class="card col center" style="gap:10px;border-color:' + pl.color + ';width:380px;padding:14px">' +
                 '<h3 style="color:' + pl.color + '">' + esc(pl.name) + '</h3><div class="qrbox">' + qr(N.url(p)) + '</div>' +
-                '<div class="small mute" style="word-break:break-all">' + esc(N.url(p)) + '</div>' +
+                '<div class="addr">' + esc(N.short(p)) + '</div>' +
                 '<div class="big" id="con' + p + '">⏳ Warte auf Handy …</div></div>';
         }
-        var html = '<div class="shade" style="background:rgba(11,17,32,.85)"></div><div class="col grow" style="position:relative;gap:16px">' +
-            '<h2 class="shadow">Handys verbinden</h2><div class="big mute">Handy ins <b>gleiche WLAN</b> wie der Fernseher, QR-Code mit der Kamera scannen – fertig. Keine App nötig.</div>' +
+        var html = '<div class="shade" style="background:rgba(13,16,32,.5)"></div><div class="col grow" style="position:relative;gap:12px">' +
+            '<h2>Handys verbinden</h2><div class="big shadow">Handy ins <b>gleiche WLAN</b> wie der Fernseher → QR-Code mit der Kamera scannen → Link öffnen. Keine App nötig.</div>' +
             '<div class="row grow center" style="gap:30px">' + need.map(card).join('') +
             (isCpu(1) ? '<div class="card col center" style="width:300px;gap:10px"><div style="font-size:70px">🤖</div><h3>Computer</h3><div class="mute">spielt Spieler 2</div></div>' : '') + '</div>' +
-            '<div class="row" style="justify-content:space-between;align-items:center"><span class="mute">Der Fernseher ist der Spielleiter – die Handys sind eure Controller.</span>' +
+            '<div class="row" style="justify-content:space-between;align-items:center"><span class="small shadow">Klappt der QR-Code nicht? Die weiße Adresse im Handy-Browser eintippen.<br>Kein Gäste-WLAN benutzen. Auf dem Handy könnt ihr euren Avatar wählen 🎨</span>' +
             btn(resumed ? 'Weiterspielen' : 'Spiel starten', 'lobbyGo', null, { cls: 'gold', auto: true }) + '</div></div>';
         show(html, { three: 'title', back: title });
         every(function () {
@@ -333,6 +428,7 @@
         else if (r.fx === 'coin' || r.fx === 'sell' || r.fx === 'marketing') sfx('coin');
         else if (!r.ok) sfx('no');
         C.sync(ST);
+        if (r.ok) checkBadges(pi);
         return r;
     }
     H.build = function (t) { var r = doAct(planPi, 'build', sel[planPi], t); toast(r.msg); ctx.keep = 'price:1'; planRemote(planPi); };
@@ -416,6 +512,7 @@
         if (!(pi === 0 || pi === 1) || !ST || isCpu(pi)) return;
         var cmd = e.cmd;
         if (cmd === 'hello') { publish(); return; }
+        if (cmd === 'avatar') { if (setLook(pi, e.key, e.val)) publish(); return; }
         if (cmd === 'next') { if (phase === 'evening') H.nextDay(); else if (phase === 'lobby') planStart(); else if (phase === 'end') H.rematch(); return; }
         if (cmd === 'sel') { if (e.plot >= 0 && e.plot < 16) { sel[pi] = e.plot; if (phase === 'plan' && OPT.control === 'phones') C.select(pi, sel[pi]); } publish(); return; }
         if (phase !== 'plan' || OPT.control !== 'phones') { msgs[pi] = { text: 'Gerade nicht möglich.', ok: false, n: (msgs[pi] ? msgs[pi].n : 0) + 1 }; publish(); return; }
@@ -526,7 +623,7 @@
                 (best ? '<div class="small">🏆 Bester Laden: <b>' + K.types[ST.plots[best.id].type].name + ' (' + plotName(best.id) + ')</b> ' + sgn(best.profit) + '</div>' : '') +
                 (r.lost ? '<div class="small bad">😞 ' + r.lost + ' Kunden gingen leer aus (ausverkauft)</div>' : '') +
                 (r.autoLoan ? '<div class="small bad">🏦 Konto im Minus – Notkredit ' + eur(r.autoLoan) + '</div>' : '') +
-                '<div class="tips">' + r.tips.slice(0, 2).map(function (t) { return '<div><span>💡</span><span>' + esc(t.x) + '</span></div>'; }).join('') + '</div></div>';
+                badgeRow(i) + '<div class="tips">' + r.tips.slice(0, 2).map(function (t) { return '<div><span>💡</span><span>' + esc(t.x) + '</span></div>'; }).join('') + '</div></div>';
         }
         var f = K.weather[ST.forecast];
         var last = ST.day >= ST.days || broke >= 0;
@@ -535,6 +632,7 @@
             '<div class="row" style="justify-content:flex-end;margin-top:14px">' + btn(last ? '🏆 Zur Siegerehrung' : 'Nächster Tag ☀️', 'nextDay', null, { cls: 'gold', auto: true }) + '</div>';
         show(html, { three: 'evening', back: function () { } });
         C.clearDay(); C.sync(ST);
+        checkBadges(0, { report: true }); checkBadges(1, { report: true });
         save();
     }
     H.nextDay = function () {
@@ -553,7 +651,7 @@
         var w = [S.wealth(ST, 0), S.wealth(ST, 1)], broke = S.bankrupt(ST);
         var win = broke >= 0 ? 1 - broke : (w[0] === w[1] ? -1 : (w[0] > w[1] ? 0 : 1));
         sfx('win');
-        if (win >= 0) C.celebrate(win, ST);
+        if (win >= 0) { checkBadges(win, { win: win }); C.celebrate(win, ST); }
         var max = Math.max.apply(null, ST.players[0].history.concat(ST.players[1].history, [1]));
         function line(i) {
             var h = ST.players[i].history, n = Math.max(2, h.length);
@@ -562,8 +660,8 @@
         function pc(i) {
             var p = ST.players[i], shops = S.shopsOf(ST, i);
             return '<div class="card col grow" style="gap:6px;border-color:' + p.color + (win === i ? ';box-shadow:0 0 0 4px #facc15' : '') + '"><h3 style="color:' + p.color + '">' + (win === i ? '👑 ' : '') + esc(p.name) + '</h3>' +
-                '<div style="font-size:34px;font-weight:900">' + eur(w[i]) + '</div><div class="small mute">' + shops.length + ' Läden · Umsatz gesamt ' + eur(p.totalRevenue) + (p.loan ? ' · Kredit ' + eur(p.loan) : '') + '</div>' +
-                '<div style="font-size:30px">' + shops.map(function (pl) { return K.types[pl.type].icon; }).join(' ') + '</div></div>';
+                '<div style="font-size:34px;font-weight:900">' + eur(w[i]) + '</div><div class="small mute">' + shops.length + (shops.length === 1 ? ' Laden' : ' Läden') + ' · Umsatz gesamt ' + eur(p.totalRevenue) + (p.loan ? ' · Kredit ' + eur(p.loan) : '') + '</div>' +
+                '<div style="font-size:30px">' + shops.map(function (pl) { return K.types[pl.type].icon; }).join(' ') + '</div>' + badgeRow(i) + '</div>';
         }
         var head = broke >= 0 ? esc(ST.players[broke].name) + ' ist pleite!' : 'Nach ' + ST.days + ' Tagen';
         var html = '<div class="col center" style="gap:4px"><span class="chip y" style="font-size:18px">' + head + '</span><h1 class="shadow" style="font-size:72px;color:' + (win >= 0 ? ST.players[win].color : '#fff') + '">' + (win >= 0 ? esc(ST.players[win].name) + ' ist Kiez-König!' : 'Unentschieden!') + '</h1></div>' +
@@ -587,7 +685,8 @@
             me: { i: pi, name: p.name, color: p.color, cash: hide ? live.cash0[pi] : p.cash, loan: p.loan, wealth: hide ? live.wealth0[pi] : S.wealth(ST, pi), mkt: p.mkt, ready: p.ready, sel: sel[pi] },
             rival: { name: o.name, color: o.color, wealth: hide ? live.wealth0[1 - pi] : S.wealth(ST, 1 - pi), ready: o.ready, cpu: o.cpu },
             plots: ST.plots.map(function (pl) { return { id: pl.id, owner: pl.owner, type: pl.type, level: pl.level, price: pl.price, invested: pl.invested, last: pl.last ? { sales: pl.last.sales, cap: pl.last.cap, lost: pl.last.lost, profit: pl.last.profit } : null }; }),
-            msg: msgs[pi]
+            msg: msgs[pi], look: lookOf(pi),
+            badges: (p.badges || []).map(function (id) { var b = badgeOf(id); return b ? [b[1], b[2]] : null; }).filter(Boolean)
         };
         var spl = ST.plots[sel[pi]];
         if (phase === 'plan' && spl && spl.owner === -1) {
@@ -599,11 +698,12 @@
         if (phase === 'end') { var w = [S.wealth(ST, 0), S.wealth(ST, 1)]; s.win = w[pi] > w[1 - pi] ? 'win' : w[pi] < w[1 - pi] ? 'lose' : 'draw'; }
         return s;
     }
-    function publish() { if (N.ok && ST) N.publish({ 1: snap(0), 2: snap(1) }); else if (N.ok) N.publish({ 1: { phase: phase }, 2: { phase: phase } }); }
+    function publish() { if (N.ok && ST) N.publish({ 1: snap(0), 2: snap(1) }); else if (N.ok) N.publish({ 1: { phase: phase, look: lookOf(0) }, 2: { phase: phase, look: lookOf(1) } }); }
 
     /* ================= Start ================= */
     window.KKDEBUG = { st: function () { return ST; }, H: H, startDay: startDay, evening: evening, finale: finale, planStart: planStart, opt: OPT, sel: sel };
     C.init(document.getElementById('three'));
     N.init(function () { N.start(onPhone); });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(title); else title();
+    var started = false; function go() { if (!started) { started = true; title(); } }
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(go); setTimeout(go, 1500);
 })();

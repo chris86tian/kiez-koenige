@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
 /**
  * Mini-Webserver im Heimnetz – derselbe Ablauf wie tools/devserver.mjs:
  *   /game/*        Spiel (lädt die WebView auf dem Fernseher)
- *   /c/*, /        Handy-Controller
+ *   /1, /2, /c/*   Handy-Controller (kurze Adresse für den QR-Code)
  *   /api/info      IP + Port für die QR-Codes
  *   /api/in        POST: Handy schickt Befehl · GET: Fernseher holt alle neuen Befehle ab
  *   /api/state     POST: Fernseher veröffentlicht Zustand · GET ?p=N: Handy liest seinen Zustand
@@ -107,6 +107,12 @@ public class RelayServer {
             c.setTcpNoDelay(true);
             InputStream in = new BufferedInputStream(c.getInputStream());
             OutputStream out = c.getOutputStream();
+            // Handy-Browser probieren oft zuerst HTTPS (TLS beginnt mit 0x16) → sofort schließen,
+            // damit der Browser ohne Wartezeit auf http zurückfällt
+            in.mark(1);
+            int first = in.read();
+            if (first < 0 || first == 0x16) { c.close(); return; }
+            in.reset();
             String line = readLine(in);
             if (line == null || line.isEmpty()) { c.close(); return; }
             String[] parts = line.split(" ");
@@ -197,7 +203,7 @@ public class RelayServer {
             return;
         }
         // statische Dateien aus den Assets
-        String file = path.equals("/") ? "/c/index.html" : path;
+        String file = path.equals("/") || path.equals("/1") || path.equals("/2") ? "/c/index.html" : path;
         if (file.endsWith("/")) file += "index.html";
         String base;
         if (file.startsWith("/game/")) { base = "game/"; file = file.substring(6); }

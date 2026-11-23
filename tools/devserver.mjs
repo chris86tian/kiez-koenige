@@ -40,7 +40,7 @@ http.createServer(async (req, res) => {
         return send(res, 200, state[pl] || '{}');
     }
     // statische Dateien
-    let file = p === '/' ? '/c/index.html' : p;
+    let file = (p === '/' || p === '/1' || p === '/2') ? '/c/index.html' : p;
     if (file.endsWith('/')) file += 'index.html';
     let base;
     if (file.startsWith('/game/')) base = 'game'; else if (file.startsWith('/c/')) base = 'controller'; else return send(res, 404, 'nicht gefunden', 'text/plain');
