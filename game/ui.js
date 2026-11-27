@@ -160,8 +160,8 @@
         function row(pi) {
             var l = lookOf(pi), h = lookName(L.hats, l.hat), f = lookName(L.faces, l.face);
             return '<div class="lookrow"><b style="width:130px;color:' + K.players[pi].color + '">' + esc(K.players[pi].name) + '</b>' +
-                btn('<span style="font-size:30px">' + h[1] + '</span><span class="sub">' + h[2] + '</span>', 'look', pi + '|hat') +
-                btn('<span style="font-size:30px">' + f[1] + '</span><span class="sub">' + f[2] + '</span>', 'look', pi + '|face') +
+                btn('<span style="font-size:33px">' + h[1] + '</span><span class="sub">' + h[2] + '</span>', 'look', pi + '|hat') +
+                btn('<span style="font-size:33px">' + f[1] + '</span><span class="sub">' + f[2] + '</span>', 'look', pi + '|face') +
                 btn('<span style="display:inline-block;width:30px;height:30px;border-radius:8px;border:3px solid #15151f;background:' + L.skins[l.skin] + '"></span><span class="sub">Hautfarbe</span>', 'look', pi + '|skin') + '</div>';
         }
         modal('<h2>🎨 Eure Avatare</h2><div class="mute">OK drücken = nächster Hut, nächstes Gesicht, nächste Farbe. Schaut auf die Figuren in der Stadt!</div>' + row(0) + row(1) +
@@ -365,7 +365,7 @@
         return '<div class="hud">' +
             '<div class="box"><div class="k">Tag ' + ST.day + ' von ' + ST.days + '</div><div class="v">' + K.dayNames[S.dow(ST)] + (S.isWeekend(ST) ? ' 🎉' : '') + '</div></div>' +
             '<div class="box"><div class="k">Heute · Morgen</div><div class="v">' + w.icon + ' ' + w.name + ' <span class="small mute">· ' + f.icon + '</span></div></div>' +
-            (ev ? '<div class="box" style="max-width:330px"><div class="k">' + ev.icon + ' Heute</div><div class="v" style="font-size:18px;white-space:normal;line-height:1.15">' + esc(ev.title) + '</div></div>' : '') +
+            (ev ? '<div class="box" style="max-width:330px"><div class="k">' + ev.icon + ' Heute</div><div class="v" style="font-size:20px;white-space:normal;line-height:1.15">' + esc(ev.title) + '</div></div>' : '') +
             '<div class="grow"></div>' + pbox(0) + pbox(1) + '</div>';
     }
 
@@ -396,25 +396,25 @@
     H.mapok = function () { var b = app.querySelector('.panel .buildlist [data-f], .panel [data-a="price"], .panel [data-f]'); if (b) setFocus(b); };
     function panelHtml(pi) {
         var p = ST.players[pi], id = sel[pi], pl = ST.plots[id], kp = K.plots[id], D = K.districts[kp.d];
-        var head = '<div class="card row" style="align-items:center;border-color:' + p.color + ';padding:10px 16px"><div class="grow"><b style="color:' + p.color + ';font-size:22px">' + esc(p.name) + '</b><div class="small mute">' + (OPT.control === 'remote' && !isCpu(1) ? 'plant gerade' : 'am Zug') + (p.mkt ? ' · 📣 Werbung ' + p.mkt + ' T.' : '') + '</div></div><div style="text-align:right"><b style="font-size:24px">' + eur(p.cash) + '</b>' + (p.loan ? '<div class="small bad">Kredit ' + eur(p.loan) + '</div>' : '') + '</div></div>';
+        var head = '<div class="card row" style="align-items:center;border-color:' + p.color + ';padding:10px 16px"><div class="grow"><b style="color:' + p.color + ';font-size:24px">' + esc(p.name) + '</b><div class="small mute">' + (OPT.control === 'remote' && !isCpu(1) ? 'plant gerade' : 'am Zug') + (p.mkt ? ' · 📣 Werbung ' + p.mkt + ' T.' : '') + '</div></div><div style="text-align:right"><b style="font-size:26px">' + eur(p.cash) + '</b>' + (p.loan ? '<div class="small bad">Kredit ' + eur(p.loan) + '</div>' : '') + '</div></div>';
         var info = '<div class="card col" style="gap:8px;flex:1;min-height:0"><div class="row" style="align-items:baseline;justify-content:space-between"><h3>' + plotName(id) + (kp.corner ? ' <span class="chip y">Ecklage</span>' : '') + '</h3><span class="chip" style="border-color:' + D.color + ';color:' + D.color + '">' + D.name + '</span></div>' +
             '<div class="small mute">' + D.who + ' · Pacht ' + eur(S.rentOf(ST, pl)) + '/Tag</div>';
         if (pl.owner === -1) {
             info += '<div class="buildlist">' + K.typeOrder.map(function (t, i) {
                 var ty = K.types[t], fc = S.forecastBuild(ST, id, t, pi), poor = p.cash < ty.build;
-                return btn('<span class="nm"><span class="ico">' + ty.icon + '</span>' + ty.name + '</span><span class="sub">Bau ' + eur(ty.build) + '</span><span class="fc">~' + fc.sales + ' Kunden · <b class="' + (fc.profit >= 0 ? 'good' : 'bad') + '">' + sgn(fc.profit) + '/Tag</b></span>', 'build', t, { dis: poor, why: 'Zu wenig Geld – ' + ty.name + ' kostet ' + eur(ty.build) + '. Kredit gibt es bei der Bank.' });
+                return btn('<span class="nm"><span class="ico">' + ty.icon + '</span>' + (ty.short || ty.name) + '</span><span class="fc">' + eur(ty.build) + ' · <b class="' + (fc.profit >= 0 ? 'good' : 'bad') + '">' + sgn(fc.profit) + '/Tag</b></span>', 'build', t, { dis: poor, why: 'Zu wenig Geld – ' + ty.name + ' kostet ' + eur(ty.build) + '. Kredit gibt es bei der Bank.' });
             }).join('') + '</div>';
         } else if (pl.owner === pi) {
             var t = K.types[pl.type], l = pl.last, upc = S.upgradeCost(pl);
-            info += '<div class="row" style="align-items:center;gap:10px"><span style="font-size:40px">' + t.icon + '</span><div class="grow"><b style="font-size:22px">' + t.name + '</b><div class="small mute">' + K.levelNames[pl.level] + ' · bis ' + S.capOf(pl) + ' Kunden/Tag</div></div></div>' +
-                '<div class="pricebar">' + btn('−', 'price', -1, { style: 'width:64px;justify-content:center;font-size:30px' }) + '<div class="p">' + price(pl.price) + '<div class="small mute">üblich ' + price(t.ref) + '</div></div>' + btn('+', 'price', 1, { style: 'width:64px;justify-content:center;font-size:30px' }) + '</div>' +
+            info += '<div class="row" style="align-items:center;gap:10px"><span style="font-size:44px">' + t.icon + '</span><div class="grow"><b style="font-size:24px">' + t.name + '</b><div class="small mute">' + K.levelNames[pl.level] + ' · bis ' + S.capOf(pl) + ' Kunden/Tag</div></div></div>' +
+                '<div class="pricebar">' + btn('−', 'price', -1, { style: 'width:64px;justify-content:center;font-size:33px' }) + '<div class="p">' + price(pl.price) + '<div class="small mute">üblich ' + price(t.ref) + '</div></div>' + btn('+', 'price', 1, { style: 'width:64px;justify-content:center;font-size:33px' }) + '</div>' +
                 '<div class="stat"><span>Kunden-Bewertung</span><b>' + stars(pl.rating) + (l && l.ratingDelta ? ' <span class="small ' + (l.ratingDelta > 0 ? 'good' : 'bad') + '">' + (l.ratingDelta > 0 ? '▲' : '▼') + '</span>' : '') + '</b></div>' +
                 (l ? '<div class="stat"><span>Gestern verkauft</span><b>' + l.sales + ' / ' + l.cap + '</b></div>' + (l.lost ? '<div class="stat"><span>Leer ausgegangen</span><b class="bad">' + l.lost + '</b></div>' : '') + '<div class="stat"><span>Gewinn gestern</span><b class="' + (l.profit >= 0 ? 'good' : 'bad') + '">' + sgn(l.profit) + '</b></div>' : '<div class="small mute">Öffnet heute zum ersten Mal.</div>') +
                 '<div class="row" style="margin-top:auto">' + btn(upc === null ? 'Voll ausgebaut' : 'Ausbauen <span class="sub">' + eur(upc) + ' · bis ' + t.cap[pl.level + 1] + ' Kunden</span>', 'upgrade', null, { dis: upc === null || p.cash < upc, why: upc === null ? 'Schon Stufe 3.' : 'Zu wenig Geld.', style: 'flex:1.4;flex-direction:column;align-items:flex-start' }) +
                 btn('Verkaufen <span class="sub">+' + eur(pl.invested * K.sellBack) + '</span>', 'sellAsk', null, { cls: 'danger', style: 'flex:1;flex-direction:column;align-items:flex-start' }) + '</div>';
         } else {
             var o = ST.players[pl.owner], tt = K.types[pl.type];
-            info += '<div class="row" style="align-items:center;gap:10px"><span style="font-size:40px">' + tt.icon + '</span><div><b style="font-size:22px;color:' + o.color + '">' + tt.name + ' von ' + esc(o.name) + '</b><div class="small mute">' + K.levelNames[pl.level] + ' · Preis ' + price(pl.price) + '</div></div></div>' +
+            info += '<div class="row" style="align-items:center;gap:10px"><span style="font-size:44px">' + tt.icon + '</span><div><b style="font-size:24px;color:' + o.color + '">' + tt.name + ' von ' + esc(o.name) + '</b><div class="small mute">' + K.levelNames[pl.level] + ' · Preis ' + price(pl.price) + '</div></div></div>' +
                 '<div class="stat"><span>Bewertung</span><b>' + stars(pl.rating) + '</b></div>' +
                 (pl.last ? '<div class="stat"><span>Gestern verkauft</span><b>' + pl.last.sales + ' / ' + pl.last.cap + '</b></div>' : '') +
                 '<div class="small mute">Tipp: Eine eigene ' + tt.name + ' daneben teilt sich die Kundschaft mit diesem Laden – lieber eine andere Art bauen?</div>';
@@ -460,7 +460,7 @@
         phase = 'handover';
         var p = ST.players[pi];
         C.select(0, -1); C.select(1, -1);
-        var html = '<div class="col grow center" style="gap:20px"><div style="font-size:90px">📺</div><h1 class="shadow" style="color:' + p.color + '">' + esc(p.name) + ' ist dran!</h1><div class="big shadow">Fernbedienung weitergeben 🙂</div>' + btn('Los geht\'s', 'handoverGo', pi, { cls: 'gold', auto: true, style: 'font-size:28px;padding:16px 40px' }) + '</div>';
+        var html = '<div class="col grow center" style="gap:20px"><div style="font-size:90px">📺</div><h1 class="shadow" style="color:' + p.color + '">' + esc(p.name) + ' ist dran!</h1><div class="big shadow">Fernbedienung weitergeben 🙂</div>' + btn('Los geht\'s', 'handoverGo', pi, { cls: 'gold', auto: true, style: 'font-size:31px;padding:16px 40px' }) + '</div>';
         show(html, { three: 'plan2', back: function () { } });
     }
     H.handoverGo = function (pi) { planRemote(+pi); };
@@ -475,14 +475,14 @@
         C.focus(-1);
         function pcard(i) {
             var p = ST.players[i];
-            return '<div class="card pstat" style="border-color:' + p.color + '"><div class="row" style="align-items:center"><b class="grow" style="color:' + p.color + ';font-size:22px">' + (p.cpu ? '🤖 ' : '📱 ') + esc(p.name) + '</b><span class="ready" id="rd' + i + '">' + readyTxt(i) + '</span></div>' +
+            return '<div class="card pstat" style="border-color:' + p.color + '"><div class="row" style="align-items:center"><b class="grow" style="color:' + p.color + ';font-size:24px">' + (p.cpu ? '🤖 ' : '📱 ') + esc(p.name) + '</b><span class="ready" id="rd' + i + '">' + readyTxt(i) + '</span></div>' +
                 '<div class="row" style="justify-content:space-between"><span>Geld</span><b id="cash' + i + '">' + eur(p.cash) + '</b></div><div class="row" style="justify-content:space-between"><span>Vermögen</span><b id="wl' + i + '">' + eur(S.wealth(ST, i)) + '</b></div>' +
                 (p.cpu ? '' : missionHtml(i, true)) +
                 '<div class="log" id="log' + i + '">' + (logs[i] || []).map(esc).join('<br>') + '</div></div>';
         }
         var html = hud() + '<div class="panel" style="width:400px">' + pcard(0) + pcard(1) +
-            '<div class="card row" style="align-items:center"><div class="grow"><div class="k mute small">PLANUNGSZEIT</div><b id="cd" style="font-size:30px">' + PLAN_SECONDS + ' s</b></div>' + btn('Tag starten ▶', 'forceDay', null, { cls: 'gold', auto: true }) + '</div></div>' +
-            '<div class="maphint card small">📱 Plant auf euren Handys. Fertig? Dann „Fertig“ tippen – der Tag startet, sobald alle bereit sind.</div>';
+            '<div class="card row" style="align-items:center"><div class="grow"><div class="k mute small">PLANUNGSZEIT</div><b id="cd" style="font-size:33px">' + PLAN_SECONDS + ' s</b></div>' + btn('Tag starten ▶', 'forceDay', null, { cls: 'gold', auto: true }) + '</div></div>' +
+            '<div class="maphint card small" style="max-width:780px">📱 Plant auf euren Handys. Fertig? Dann „Fertig“ tippen – der Tag startet, sobald alle bereit sind.</div>';
         show(html, { three: 'plan', back: pauseMenu });
         every(function () {
             var left = Math.max(0, Math.round((planDeadline - Date.now()) / 1000));
@@ -552,7 +552,7 @@
         var ev = S.eventDef(ST.event);
         var html = '<div class="hud"><div class="box"><div class="k">Tag ' + ST.day + ' · ' + K.dayNames[S.dow(ST)] + '</div><div class="v" id="clk">08:00</div></div>' +
             '<div class="box"><div class="k">Wetter</div><div class="v">' + K.weather[ST.weather].icon + ' ' + K.weather[ST.weather].name + '</div></div>' +
-            (ev ? '<div class="box"><div class="k">' + ev.icon + ' Ereignis</div><div class="v" style="font-size:18px">' + esc(ev.title) + '</div></div>' : '') +
+            (ev ? '<div class="box"><div class="k">' + ev.icon + ' Ereignis</div><div class="v" style="font-size:20px">' + esc(ev.title) + '</div></div>' : '') +
             '<div class="grow"></div>' + [0, 1].map(function (i) { var p = ST.players[i]; return '<div class="box pl" style="border-left-color:' + p.color + ';min-width:220px"><div class="k" style="color:' + p.color + '">' + esc(p.name) + ' · Umsatz heute</div><div class="v" id="rev' + i + '">0 €</div></div>'; }).join('') + '</div>' +
             '<div class="grow"></div><div class="row" style="align-items:center;gap:16px"><div class="grow clockbar"><i id="cbar" style="width:0%"></i></div>' + btn('⏩ Schneller', 'fast', null, { auto: true }) + btn('Zum Abend', 'skip') + '</div>';
         show(html, { three: 'day', back: function () { } });
@@ -624,7 +624,7 @@
             var p = ST.players[i], r = rep.players[i];
             var best = null;
             r.shops.forEach(function (id) { var x = rep.plots[id]; if (!best || x.profit > best.profit) best = { id: id, profit: x.profit }; });
-            return '<div class="card col grow" style="gap:8px;border-color:' + p.color + '"><div class="row" style="align-items:baseline;justify-content:space-between"><h3 style="color:' + p.color + '">' + esc(p.name) + '</h3><b class="' + (r.profit >= 0 ? 'good' : 'bad') + '" style="font-size:26px">' + sgn(r.profit) + '</b></div>' +
+            return '<div class="card col grow" style="gap:8px;border-color:' + p.color + '"><div class="row" style="align-items:baseline;justify-content:space-between"><h3 style="color:' + p.color + '">' + esc(p.name) + '</h3><b class="' + (r.profit >= 0 ? 'good' : 'bad') + '" style="font-size:29px">' + sgn(r.profit) + '</b></div>' +
                 '<table class="tbl"><tr><td>Umsatz (' + r.sales + ' Kunden)</td><td class="good">' + sgn(r.rev) + '</td></tr><tr><td>Ware</td><td class="bad">' + sgn(-r.goods) + '</td></tr><tr><td>Personal</td><td class="bad">' + sgn(-r.wage) + '</td></tr><tr><td>Pacht' + (r.interest ? ' & Zinsen' : '') + '</td><td class="bad">' + sgn(-(r.rent + r.interest)) + '</td></tr>' +
                 '<tr class="sum"><td>Vermögen</td><td>' + eur(S.wealth(ST, i)) + '</td></tr></table>' +
                 (best ? '<div class="small">🏆 Bester Laden: <b>' + K.types[ST.plots[best.id].type].name + ' (' + plotName(best.id) + ')</b> ' + sgn(best.profit) + '</div>' : '') +
@@ -668,11 +668,11 @@
         function pc(i) {
             var p = ST.players[i], shops = S.shopsOf(ST, i);
             return '<div class="card col grow" style="gap:6px;border-color:' + p.color + (win === i ? ';box-shadow:0 0 0 4px #facc15' : '') + '"><h3 style="color:' + p.color + '">' + (win === i ? '👑 ' : '') + esc(p.name) + '</h3>' +
-                '<div style="font-size:34px;font-weight:900">' + eur(w[i]) + '</div><div class="small mute">' + shops.length + (shops.length === 1 ? ' Laden' : ' Läden') + ' · Umsatz gesamt ' + eur(p.totalRevenue) + (p.loan ? ' · Kredit ' + eur(p.loan) : '') + '</div>' +
-                '<div style="font-size:30px">' + shops.map(function (pl) { return K.types[pl.type].icon; }).join(' ') + '</div>' + badgeRow(i) + '</div>';
+                '<div style="font-size:37px;font-weight:900">' + eur(w[i]) + '</div><div class="small mute">' + shops.length + (shops.length === 1 ? ' Laden' : ' Läden') + ' · Umsatz gesamt ' + eur(p.totalRevenue) + (p.loan ? ' · Kredit ' + eur(p.loan) : '') + '</div>' +
+                '<div style="font-size:33px">' + shops.map(function (pl) { return K.types[pl.type].icon; }).join(' ') + '</div>' + badgeRow(i) + '</div>';
         }
         var head = broke >= 0 ? esc(ST.players[broke].name) + ' ist pleite!' : 'Nach ' + ST.days + ' Tagen';
-        var html = '<div class="col center" style="gap:4px"><span class="chip y" style="font-size:18px">' + head + '</span><h1 class="shadow" style="font-size:72px;color:' + (win >= 0 ? ST.players[win].color : '#fff') + '">' + (win >= 0 ? esc(ST.players[win].name) + ' ist Kiez-König!' : 'Unentschieden!') + '</h1></div>' +
+        var html = '<div class="col center" style="gap:4px"><span class="chip y" style="font-size:20px">' + head + '</span><h1 class="shadow" style="font-size:72px;color:' + (win >= 0 ? ST.players[win].color : '#fff') + '">' + (win >= 0 ? esc(ST.players[win].name) + ' ist Kiez-König!' : 'Unentschieden!') + '</h1></div>' +
             '<div class="grow"></div>' +
             '<div class="row" style="gap:18px;align-items:stretch">' + pc(0) + '<div class="card col center" style="width:600px"><div class="small mute">Vermögen Tag für Tag</div><svg viewBox="0 0 560 175" style="width:560px;height:175px">' + line(0) + line(1) + '</svg></div>' + pc(1) + '</div>' +
             '<div class="row" style="justify-content:flex-end;gap:14px;margin-top:14px">' + btn('Revanche!', 'rematch', null, { cls: 'gold', auto: true }) + btn('Zum Titelbild', 'title') + '</div>';
