@@ -33,6 +33,7 @@
         st.weather = S.rollWeather(st);
         st.forecast = S.rollWeather(st);
         st.event = null;   // Tag 1 ohne Ereignis
+        S.makeMissions(st);
         st.players.forEach(function (p, i) { p.history.push(S.wealth(st, i)); });
         return st;
     };
@@ -70,7 +71,8 @@
                 if (pl.owner !== -1) return { ok: false, msg: pl.owner === pi ? 'Gehört dir schon.' : 'Schon vergeben!' };
                 if (p.cash < t.build) return { ok: false, msg: 'Zu wenig Geld: ' + t.name + ' kostet ' + fmt(t.build) + '.' };
                 p.cash -= t.build;
-                pl.owner = pi; pl.type = b; pl.level = 0; pl.price = r10(t.ref); pl.invested = t.build; pl.last = null; pl.opened = st.day;
+                pl.owner = pi; pl.type = b; pl.level = 0; pl.price = r10(t.ref); pl.invested = t.build; pl.last = null; pl.opened = st.day; pl.rating = K.rating.start;
+                p.builtToday = true;
                 return { ok: true, msg: t.name + ' gebaut!', fx: 'build' };
             }
             case 'upgrade': {
@@ -86,7 +88,7 @@
                 var back = Math.round(pl.invested * K.sellBack);
                 p.cash += back;
                 var name = K.types[pl.type].name;
-                pl.owner = -1; pl.type = null; pl.level = 0; pl.price = 0; pl.invested = 0; pl.last = null;
+                pl.owner = -1; pl.type = null; pl.level = 0; pl.price = 0; pl.invested = 0; pl.last = null; pl.rating = K.rating.start;
                 return { ok: true, msg: name + ' verkauft (+' + fmt(back) + ').', fx: 'sell' };
             }
             case 'price': {   // b = Schritt (+1 / -1) oder Preis
@@ -131,6 +133,7 @@
         if (dist) u -= 1.2; else if (K.plots[pl.id].corner) u += 0.15;
         if (p && p.mkt > 0) u += K.marketing.boost;
         if (st.influencer === pl.id) u += 1.0;
+        u += K.rating.weight * ((pl.rating || K.rating.start) - K.rating.start);
         if (opts && opts.boost && opts.boost[pl.id]) u += opts.boost[pl.id];
         return u;
     };
@@ -190,7 +193,7 @@
     /* Prognose: wie viele Kunden hätte ein neuer Laden dieser Art hier heute? */
     S.forecastBuild = function (st, plotId, type, pi) {
         var t = K.types[type];
-        var plots = st.plots.map(function (pl) { return pl.id === plotId ? { id: pl.id, owner: pi, type: type, level: 0, price: r10(t.ref), invested: t.build } : pl; });
+        var plots = st.plots.map(function (pl) { return pl.id === plotId ? { id: pl.id, owner: pi, type: type, level: 0, price: r10(t.ref), invested: t.build, rating: K.rating.start } : pl; });
         var r = S.computeDay(st, plots)[plotId];
         return r;
     };
@@ -205,6 +208,13 @@
                 if (pl.owner !== pi) return;
                 var r = res[pl.id];
                 pl.last = { demand: r.demand, sales: r.sales, lost: r.lost, rev: r.rev, profit: r.profit, cap: r.cap, price: pl.price };
+                // Kundenbewertung: faire Preise und genug Ware → gute Sterne
+                var tt = K.types[pl.type], before = pl.rating || K.rating.start;
+                var priceScore = clamp((tt.ref / pl.price - 1) * 4, -1.6, 1.0);
+                var soldOut = r.demand ? r.lost / r.demand : 0;
+                var target = clamp(3.6 + priceScore + 0.35 * pl.level - 2.6 * soldOut + (p.mkt > 0 ? 0.1 : 0), 1, 5);
+                pl.rating = Math.round((before * 0.65 + target * 0.35) * 10) / 10;
+                pl.last.rating = pl.rating; pl.last.ratingDelta = r10(pl.rating - before);
                 pr.rev += r.rev; pr.goods += r.goods; pr.wage += r.wage; pr.rent += r.rent; pr.sales += r.sales; pr.lost += r.lost;
                 pr.shops.push(pl.id);
             });
@@ -217,6 +227,9 @@
             while (p.cash < 0 && p.loan < K.loanMax) { p.loan += K.loanStep; p.cash += K.loanStep; pr.autoLoan += K.loanStep; }
             pr.broke = p.cash < 0;
             pr.tips = S.tips(st, pi, res);
+            pr.mission = S.checkMission(st, pi, pr);
+            if (pr.mission && pr.mission.ok) { p.cash += pr.mission.reward; pr.profit += pr.mission.reward; p.missionsDone = (p.missionsDone || 0) + 1; }
+            p.builtToday = false;
             rep.players.push(pr);
         });
         st.report = rep;
@@ -233,6 +246,7 @@
             if (r.lost > r.cap * 0.25) out.push({ k: 'cap', id: pl.id, x: t.name + ' war ausverkauft – ' + r.lost + ' Kunden gingen leer aus. Ausbauen oder Preis erhöhen!' });
             else if (r.profit < 0 && r.sales < r.cap * 0.5) out.push({ k: 'loss', id: pl.id, x: t.name + ' macht Verlust: Pacht und Personal kosten mehr, als die Marge bringt.' });
             else if (pl.price > t.ref * 1.35 && r.sales < r.cap * 0.6) out.push({ k: 'price', id: pl.id, x: t.name + ': Bei ' + fmtPrice(pl.price) + ' kaufen nur wenige. Zu teuer?' });
+            else if ((pl.rating || 3.5) < 2.8) out.push({ k: 'rating', id: pl.id, x: t.name + ' hat nur ' + (pl.rating || 0).toFixed(1).replace('.', ',') + ' ⭐ – Kunden mögen keine hohen Preise und leere Regale.' });
         });
         var mine = S.shopsOf(st, pi);
         mine.forEach(function (pl) {
@@ -242,6 +256,35 @@
         });
         if (!mine.length) out.push({ k: 'none', x: 'Noch kein Laden? Ohne Geschäft kein Geld – bau morgen deinen ersten!' });
         return out.slice(0, 3);
+    };
+
+    /* ---------- Tagesaufgaben (je Spieler) ---------- */
+    S.makeMission = function (st, pi) {
+        var shops = S.shopsOf(st, pi), lastSales = 0, lastProfit = 0;
+        shops.forEach(function (pl) { if (pl.last) { lastSales += pl.last.sales; lastProfit += pl.last.profit; } });
+        var kinds = shops.length ? ['sales', 'profit', 'nosold', 'stars', 'district', 'build'] : ['build'];
+        if (shops.length >= 6) kinds = kinds.filter(function (k) { return k !== 'build'; });
+        var k = pick(st, kinds), m = { kind: k, lvl: 1 };
+        if (k === 'build') { m.text = 'Eröffne heute einen neuen Laden'; m.lvl = 0; }
+        else if (k === 'sales') { m.target = Math.max(300, Math.round(Math.max(lastSales, 300) * 1.12 / 50) * 50); m.text = 'Verkaufe heute an mindestens ' + m.target + ' Kunden'; }
+        else if (k === 'profit') { m.target = Math.max(500, Math.round(Math.max(lastProfit, 400) * 1.15 / 100) * 100); m.text = 'Mach heute mindestens ' + fmt(m.target) + ' Gewinn'; m.lvl = 2; }
+        else if (k === 'nosold') { m.text = 'Kein einziger Laden darf heute ausverkauft sein'; }
+        else if (k === 'stars') { m.text = 'Bring einen Laden auf mindestens 4,0 ⭐'; m.lvl = 2; }
+        else { var d = Math.floor(S.rand(st) * 4); m.d = d; m.text = 'Hab heute einen Laden im Viertel ' + K.districts[d].name; m.lvl = 0; }
+        m.reward = K.missionBonus[m.lvl];
+        return m;
+    };
+    S.makeMissions = function (st) { st.missions = [S.makeMission(st, 0), S.makeMission(st, 1)]; };
+    S.checkMission = function (st, pi, pr) {
+        var m = st.missions && st.missions[pi]; if (!m) return null;
+        var shops = S.shopsOf(st, pi), ok = false;
+        if (m.kind === 'build') ok = !!st.players[pi].builtToday;
+        else if (m.kind === 'sales') ok = pr.sales >= m.target;
+        else if (m.kind === 'profit') ok = pr.profit >= m.target;
+        else if (m.kind === 'nosold') ok = shops.length > 0 && pr.lost === 0;
+        else if (m.kind === 'stars') ok = shops.some(function (pl) { return (pl.rating || 0) >= 4; });
+        else if (m.kind === 'district') ok = shops.some(function (pl) { return K.plots[pl.id].d === m.d; });
+        return { text: m.text, ok: ok, reward: ok ? m.reward : 0, full: m.reward };
     };
 
     /* ---------- Nächster Morgen ---------- */
@@ -262,6 +305,7 @@
                 else st.event = null;
             }
         }
+        S.makeMissions(st);
         st.phase = 'plan';
     };
 

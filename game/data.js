@@ -3,7 +3,7 @@
     'use strict';
     var K = {};
 
-    K.version = '1.1';
+    K.version = '2.0';
     K.startCash = 20000;
     K.loanStep = 10000;
     K.loanMax = 30000;
@@ -12,6 +12,8 @@
     K.sellBack = 0.5;            // Verkauf bringt 50 % der Investition zurück
     K.assetValue = 0.6;          // Firmenwert zählt mit 60 % der Investition
     K.marketing = { cost: 1500, days: 3, boost: 0.5 };
+    K.rating = { start: 3.5, weight: 0.25 };   // Kundenbewertung 1–5 Sterne: ±0,25 Attraktivität je Stern über/unter 3,5
+    K.missionBonus = [800, 1200, 1600];       // Belohnung der Tagesaufgabe (leicht, mittel, schwer)
     K.outside = 0.8;             // Gewicht für „nichts kaufen“
     K.dayNames = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
     K.players = [
@@ -46,7 +48,7 @@
     }
 
     /* Geschäftsarten. appeal: Beliebtheit je Viertel [Altstadt, Uni, Büro, Wohnen] */
-    K.typeOrder = ['kiosk', 'eis', 'cafe', 'imbiss', 'fitness', 'gaming'];
+    K.typeOrder = ['kiosk', 'bubbletea', 'eis', 'cafe', 'secondhand', 'imbiss', 'fitness', 'gaming'];
     K.types = {
         kiosk:   { name: 'Kiosk',          icon: '🗞️', color: '#f59e0b', build: 5000,  up: [4000, 7000],   cap: [500, 800, 1150], cost: 1.6, ref: 4.0,  wage: [150, 260, 380], share: 0.30, appeal: [0.9, 1.3, 1.0, 1.0], weather: { sun: 1, rain: 1.1, heat: 1.1 },
             desc: 'Günstig zu bauen, viele kleine Einkäufe.' },
@@ -58,6 +60,10 @@
             desc: 'Mittags voll. Höherer Einkaufspreis pro Portion.' },
         fitness: { name: 'Fitness-Studio', icon: '🏋️', color: '#22c55e', build: 18000, up: [14000, 24000], cap: [420, 680, 980],  cost: 0.8, ref: 12.0, wage: [500, 800, 1150], share: 0.18, appeal: [0.7, 1.0, 1.3, 1.3], weather: { sun: 1, rain: 1.15, heat: 0.8 },
             desc: 'Teuer im Bau, wenige Kunden – aber fast alles ist Gewinn.' },
+        bubbletea: { name: 'Bubble-Tea-Bar', icon: '🥤', color: '#14b8a6', build: 7000, up: [5500, 9500], cap: [600, 950, 1400], cost: 1.7, ref: 5.0, wage: [200, 340, 500], share: 0.16, appeal: [1.1, 1.6, 0.9, 0.8], weather: { sun: 1.05, rain: 0.75, heat: 1.4 },
+            desc: 'Trend-Getränk mit Perlen. Liebling im Uni-Viertel, bei Hitze top.' },
+        secondhand: { name: 'Second-Hand-Laden', icon: '👗', color: '#ec4899', build: 10000, up: [8000, 13000], cap: [360, 600, 880], cost: 4.5, ref: 12.0, wage: [260, 430, 640], share: 0.105, appeal: [1.2, 1.5, 0.7, 1.3], weather: { sun: 1, rain: 1.15, heat: 0.9 },
+            desc: 'Gebrauchte Mode wie auf Vinted: günstig einkaufen, mit Gewinn weiterverkaufen.' },
         gaming:  { name: 'Gaming-Lounge',  icon: '🎮', color: '#8b5cf6', build: 24000, up: [18000, 30000], cap: [470, 760, 1100],  cost: 2.5, ref: 15.0, wage: [550, 880, 1250], share: 0.14, appeal: [1.0, 1.6, 0.6, 1.0], weather: { sun: 0.95, rain: 1.3, heat: 1.0 },
             desc: 'Das große Ding fürs Uni-Viertel. Bei Regen voll.' }
     };

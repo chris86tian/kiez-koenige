@@ -70,6 +70,21 @@
         }
         var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; return t;
     }
+    /* Nachtlicht: nur die Fenster leuchten (Wände schwarz) */
+    function litTex() {
+        var c = document.createElement('canvas'); c.width = 64; c.height = 64;
+        var g = c.getContext('2d'); g.fillStyle = '#000000'; g.fillRect(0, 0, 64, 64);
+        for (var y = 0; y < 2; y++) for (var x = 0; x < 2; x++) { g.fillStyle = (x + y) % 3 ? '#ffd27a' : '#ffe9b0'; g.fillRect(9 + x * 30, 11 + y * 30, 16, 16); }
+        var t = new T.CanvasTexture(c); t.wrapS = t.wrapT = T.RepeatWrapping; return t;
+    }
+    var litMats = [], night = 0, lamps = null;
+    function litMat(color, rx, ry) {
+        var m = new T.MeshLambertMaterial({ color: color, map: mat.win.clone(), emissive: 0xffc46b, emissiveMap: mat.lit.clone(), emissiveIntensity: night });
+        m.map.needsUpdate = true; m.emissiveMap.needsUpdate = true;
+        m.map.repeat.set(rx, ry); m.emissiveMap.repeat.set(rx, ry);
+        litMats.push(m);
+        return m;
+    }
     /* Gesicht (64×64). bg = null → weiß (wird über die Instanzfarbe eingefärbt) */
     function faceCanvas(kind, bg) {
         var c = document.createElement('canvas'); c.width = c.height = 64;
@@ -138,7 +153,7 @@
         geo.cyl = new T.CylinderGeometry(1, 1, 1, 10);
         geo.cone4 = new T.ConeGeometry(1, 1, 4);
         geo.coin = new T.CylinderGeometry(0.5, 0.5, 0.16, 10);
-        mat.win = windowsTex();
+        mat.win = windowsTex(); mat.lit = litTex();
         mat.coin = new T.MeshLambertMaterial({ color: 0xffd23f, emissive: 0x7a4f00, emissiveIntensity: 0.5 });
 
         buildWorld();
@@ -183,7 +198,9 @@
         box(scene, 1.2, 2.6, 1.2, 0, 1.6, 0, lam(0xe2e8f0)); box(scene, 2.2, 0.4, 2.2, 0, 2.9, 0, lam(0xe2e8f0));
         box(scene, 0.8, 0.8, 0.8, 0, 3.5, 0, lam(0x7dd3fc, 0x0ea5e9));
         // Kulissen-Häuser (instanziert)
-        var n = 90, inst = new T.InstancedMesh(geo.box, new T.MeshLambertMaterial({ color: 0xffffff, map: mat.win }), n);
+        var skyMat = new T.MeshLambertMaterial({ color: 0xffffff, map: mat.win, emissive: 0xffc46b, emissiveMap: mat.lit, emissiveIntensity: 0 });
+        litMats.push(skyMat);
+        var n = 90, inst = new T.InstancedMesh(geo.box, skyMat, n);
         var m4 = new T.Matrix4(), q = new T.Quaternion(), sc = new T.Vector3(), pos = new T.Vector3(), cc = new T.Color();
         var pal = [0xff6b6b, 0xffd23f, 0x4ade80, 0x60a5fa, 0xc084fc, 0xf472b6, 0xf8fafc, 0xfb923c, 0x2dd4bf];
         for (var k = 0; k < n; k++) {
@@ -193,6 +210,16 @@
             m4.compose(pos, q, sc); inst.setMatrixAt(k, m4); inst.setColorAt(k, cc.setHex(pal[k % pal.length]));
         }
         scene.add(inst);
+        // Straßenlaternen entlang der Ringstraße (leuchten am Abend)
+        var lp = [];
+        for (var li = -24; li <= 24; li += 12) { lp.push([li, -31.5], [li, 31.5], [-31.5, li], [31.5, li]); }
+        var poles = new T.InstancedMesh(geo.box, lam(0x334155), lp.length);
+        lamps = new T.InstancedMesh(geo.box, new T.MeshLambertMaterial({ color: 0xfff1c9, emissive: 0xffd27a, emissiveIntensity: 0 }), lp.length);
+        lp.forEach(function (p, i) {
+            pos.set(p[0], 2.2, p[1]); sc.set(0.3, 4.4, 0.3); m4.compose(pos, q, sc); poles.setMatrixAt(i, m4);
+            pos.set(p[0], 4.6, p[1]); sc.set(0.8, 0.6, 0.8); m4.compose(pos, q, sc); lamps.setMatrixAt(i, m4);
+        });
+        scene.add(poles); scene.add(lamps);
         // Klötzchen-Bäume (instanziert): Stamm + zwei Blätter-Würfel
         var tn = 60, trunk = new T.InstancedMesh(geo.box, lam(0x8b5a2b), tn), leaf = new T.InstancedMesh(geo.box, lam(0xffffff), tn * 2);
         var greens = [0x22c55e, 0x16a34a, 0x4ade80];
@@ -258,8 +285,8 @@
         var floors = 1 + (level >= 2 ? 1 : 0);
         var wallCol = col(t.color).lerp(col('#ffffff'), 0.55);
         function body(w, h, d) {
-            var side = new T.MeshLambertMaterial({ color: wallCol, map: mat.win.clone() });
-            side.map.needsUpdate = true; side.map.repeat.set(Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+            var side = litMat(wallCol, Math.max(1, Math.round(w / 2)), Math.max(1, Math.round(h / 2)));
+            g.userData.lit = (g.userData.lit || []).concat([side]);
             var m = new T.Mesh(geo.box, side); m.scale.set(w, h, d); m.position.y = 0.7 + h / 2; g.add(m);
             plate(g, w + 0.6, 0.6, d + 0.6, 0, 0.7 + h + 0.3, 0, col(ownerColor).getHex(), 1);   // Dach in Spielerfarbe mit Noppen
             return 0.7 + h + 0.6;
@@ -289,6 +316,21 @@
             [[2.0, 0.55, 0xe0a040], [2.2, 0.3, 0x7c2d12], [2.3, 0.15, 0x22c55e], [2.1, 0.15, 0xfacc15], [2.0, 0.55, 0xe0a040]].forEach(function (l, k) {
                 box(g, l[0], l[1], l[0], 0, top + 0.3 + k * 0.4, 0, lam(l[2]));
             });
+        } else if (type === 'bubbletea') {      // Bubble-Tea: Riesenbecher mit Strohhalm und Perlen auf dem Dach
+            top = body(3.8 * s, 2.7 * floors, 3.4 * s);
+            box(g, 4.1 * s, 0.35, 1.3, 0, 2.6, 2.2 * s, acc);
+            box(g, 1.5, 2.2, 1.5, 0, top + 1.1, 0, new T.MeshLambertMaterial({ color: 0xe8fffb, transparent: true, opacity: 0.85 }));
+            box(g, 1.3, 1.4, 1.3, 0, top + 0.75, 0, lam(0xd9a066));                      // Milchtee
+            [[-0.35, -0.3], [0.3, 0.2], [0, 0.35], [-0.2, 0.1], [0.35, -0.35]].forEach(function (p) { box(g, 0.28, 0.28, 0.28, p[0], top + 0.3, p[1], lam(0x2b1a12)); });   // Perlen
+            box(g, 1.7, 0.2, 1.7, 0, top + 2.3, 0, lam(0x14b8a6));                        // Deckel
+            var straw = box(g, 0.25, 2.2, 0.25, 0.3, top + 3.2, 0, lam(0xff5cb5)); straw.rotation.z = -0.25;
+        } else if (type === 'secondhand') {     // Second-Hand: Kleiderstange vor dem Laden, großes T-Shirt-Schild
+            top = body(4.4 * s, 2.8 * floors, 3.6 * s);
+            for (var a = 0; a < 5; a++) box(g, 4.7 * s / 5 - 0.05, 0.4, 1.3, (-2 + a) * 4.7 * s / 5, 2.65, 2.3 * s, lam(a % 2 ? 0xffffff : 0xec4899));
+            box(g, 3.0, 0.12, 0.12, 0, 2.0, 3.4 * s, lam(0x94a3b8)); box(g, 0.12, 2.0, 0.12, -1.45, 1.0, 3.4 * s, lam(0x94a3b8)); box(g, 0.12, 2.0, 0.12, 1.45, 1.0, 3.4 * s, lam(0x94a3b8));
+            [[-0.9, 0xf472b6], [0, 0x60a5fa], [0.9, 0xfacc15]].forEach(function (c) { box(g, 0.7, 0.9, 0.12, c[0], 1.5, 3.4 * s, lam(c[1])); box(g, 0.95, 0.22, 0.12, c[0], 1.85, 3.4 * s, lam(c[1])); });
+            box(g, 2.6, 0.8, 0.3, 0, top + 1.0, 0, lam(0xec4899)); box(g, 1.4, 1.6, 0.3, 0, top + 0.6, 0, lam(0xec4899));   // T-Shirt
+            box(g, 0.5, 0.3, 0.32, 0, top + 1.2, 0, lam(0xffffff));
         } else if (type === 'fitness') {
             top = body(5.6 * s, 3.2 * floors, 4.4 * s);
             var y1 = top + 1.0;
@@ -314,7 +356,7 @@
             owners[i] = pl.owner;
             var key = pl.owner + ':' + pl.type + ':' + pl.level;
             if (key !== o.key) {
-                if (o.shop) o.g.remove(o.shop);
+                if (o.shop) { o.g.remove(o.shop); (o.shop.userData.lit || []).forEach(function (m) { var k = litMats.indexOf(m); if (k >= 0) litMats.splice(k, 1); }); }
                 o.shop = null;
                 if (pl.type) {
                     o.shop = shopModel(pl.type, pl.level, st.players[pl.owner].color);
@@ -370,6 +412,9 @@
         sun.intensity = (weather === 'rain' ? 0.45 : 0.85) * (t > 0.92 ? 0.45 : 1);
         hemi.intensity = weather === 'rain' ? 0.8 : 1.0;
         if (clouds) clouds.material.color.set(weather === 'rain' ? '#9aa6b8' : '#ffffff');
+        night = Math.max(0, Math.min(1, (t - 0.74) / 0.18)) + (weather === 'rain' && t > 0.5 ? 0.25 : 0);
+        litMats.forEach(function (m) { m.emissiveIntensity = night * 0.95; });
+        if (lamps) lamps.material.emissiveIntensity = night * 1.2;
     };
     C.setWeather = function (w) { weather = w; rain.visible = w === 'rain'; C.setTime(clockT); };
 

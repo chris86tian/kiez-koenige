@@ -119,6 +119,7 @@ button.red { background: #e2483d; }
         h += '<div class="chips"><span class="chip">' + w.icon + ' ' + w.name + '</span><span class="chip">morgen ' + f.icon + '</span>' + (me.mkt ? '<span class="chip">📣 ' + me.mkt + ' T.</span>' : '') + (me.loan ? '<span class="chip" style="color:#fca5a5">Kredit ' + eur(me.loan) + '</span>' : '') +
             '<span class="chip" style="color:' + S.rival.color + '">' + esc(S.rival.name) + ': ' + eur(S.rival.wealth) + '</span>' + (S.timeLeft !== null && S.phase === 'plan' ? '<span class="chip">⏱ ' + S.timeLeft + ' s</span>' : '') + '</div>';
         if (S.event && S.phase === 'plan') h += '<div class="card" style="border-color:#854d0e"><b>' + S.event.icon + ' ' + esc(S.event.title) + '</b><div class="sub" style="margin-top:4px">' + esc(S.event.text) + '</div></div>';
+        if (S.mission && S.phase === 'plan') h += '<div class="card" style="border-left:8px solid var(--gold)"><b>🎯 Tagesaufgabe</b><div style="margin-top:3px">' + esc(S.mission.text) + ' <b style="color:var(--gold)">+' + eur(S.mission.reward) + '</b></div></div>';
         var foot = '';
 
         if (S.phase === 'plan' && S.control !== 'phones') {
@@ -139,6 +140,7 @@ button.red { background: #e2483d; }
         } else if (S.phase === 'evening') {
             var r = S.report || { rev: 0, profit: 0, tips: [] };
             h += '<div class="card center"><div class="sub">Gewinn heute</div><div class="big" style="color:' + (r.profit >= 0 ? 'var(--good)' : 'var(--bad)') + '">' + sgn(r.profit) + '</div><div class="sub">Umsatz ' + eur(r.rev) + ' · ' + r.sales + ' Kunden' + (r.lost ? ' · ' + r.lost + ' leer ausgegangen' : '') + '</div></div>' +
+                (r.mission ? '<div class="card center" style="border-left:8px solid var(--gold)">🎯 ' + (r.mission.ok ? '<b>Aufgabe geschafft!</b> <b style="color:var(--good)">+' + eur(r.mission.reward) + '</b>' : 'Aufgabe verpasst: ' + esc(r.mission.text)) + '</div>' : '') +
                 ((S.badges || []).length ? '<div class="card center"><b>🏅 Deine Abzeichen</b>' + badgesHtml() + '</div>' : '') + (r.tips.length ? '<div class="card">' + r.tips.map(function (x) { return '<div class="tip">💡 ' + esc(x) + '</div>'; }).join('') + '</div>' : '');
             foot = '<button class="gold" data-c="next">Weiter ☀️</button>';
         } else if (S.phase === 'end') {
@@ -195,6 +197,7 @@ button.red { background: #e2483d; }
         } else if (pl.owner === me.i) {
             var t = K.types[pl.type], l = pl.last, up = pl.level < 2 ? t.up[pl.level] : null;
             h += '<div class="row" style="margin-top:8px"><span style="font-size:36px">' + t.icon + '</span><div><b style="font-size:18px">' + t.name + '</b><div class="sub">' + K.levelNames[pl.level] + ' · bis ' + t.cap[pl.level] + ' Kunden/Tag</div></div></div>' +
+                '<div class="stat"><span>Kunden-Bewertung</span><b>⭐ ' + (pl.rating || 3.5).toFixed(1).replace('.', ',') + '</b></div>' +
                 '<div class="price"><button data-c="price" data-d="-1">−</button><div class="v">' + pr(pl.price) + '<div class="sub">üblich ' + pr(t.ref) + '</div></div><button data-c="price" data-d="1">+</button></div>' +
                 (l ? '<div class="stat"><span>Gestern verkauft</span><b>' + l.sales + ' / ' + l.cap + '</b></div>' + (l.lost ? '<div class="stat"><span>Leer ausgegangen</span><b style="color:var(--bad)">' + l.lost + '</b></div>' : '') + '<div class="stat"><span>Gewinn gestern</span><b style="color:' + (l.profit >= 0 ? 'var(--good)' : 'var(--bad)') + '">' + sgn(l.profit) + '</b></div>' : '<div class="sub">Öffnet heute zum ersten Mal.</div>') +
                 '<div class="row" style="margin-top:10px"><button style="flex:1.4" class="' + (up === null || me.cash < up ? 'dis' : 'p') + '" data-c="upgrade">' + (up === null ? 'Voll ausgebaut' : 'Ausbauen ' + eur(up)) + '</button>' +

@@ -18,6 +18,14 @@ APK herunterladen: **[KiezKoenige-FireTV.apk](https://github.com/chris86tian/kie
 |---|---|
 | ![Finale](docs/finale.jpg) | <img src="docs/handy.jpg" width="220" alt="Handy"> |
 
+## Neu in 2.0
+
+- **Soundtrack mit eigenen Songs** in drei Stilen (im Setup wählbar): ☕ Lo-Fi (warme Septakkorde, Swing, Vinyl-Knistern), 🎵 Chiptune und 🔊 Phonk (Kuhglocken-Riff, 808-Bass). Je ein Song für Morgen-Planung, Verkaufstag und Feierabend – alle selbst komponiert und live mit Web Audio erzeugt
+- **Zwei neue Läden:** 👗 Second-Hand-Laden (wie Vinted: günstig einkaufen, mit Gewinn weiterverkaufen) und 🥤 Bubble-Tea-Bar (Liebling im Uni-Viertel, bei Hitze top)
+- **Kunden-Bewertungen ⭐ 1–5:** faire Preise und volle Regale bringen gute Sterne – und gute Sterne bringen mehr Kundschaft. Zu teuer oder ausverkauft? Dann sinkt die Bewertung
+- **Tagesaufgaben 🎯** für jeden Spieler (z. B. „Verkaufe an 600 Kunden“, „Kein Laden ausverkauft“, „Bring einen Laden auf 4 ⭐“) mit Bonus von 800–1.600 €
+- **Abendstimmung:** Fenster und Straßenlaternen leuchten, wenn der Tag zu Ende geht
+
 ## Neu in 1.1: Klötzchen-Look
 
 - **Bunte Noppen-Stadt:** Plastikplatten mit Noppen, Klötzchen-Bäume, -Wolken und -Brunnen

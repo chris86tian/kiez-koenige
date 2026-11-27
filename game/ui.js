@@ -4,7 +4,7 @@
     var K = window.KKDATA, S = window.KKSIM, C = window.KK3D, N = window.KKNET;
     var app = document.getElementById('app');
     var ST = null;                       // Spielstand
-    var OPT = { control: 'phones', p2: 'human', days: 20, looks: [{ hat: 'cap', face: 'smile', skin: 0 }, { hat: 'hair', face: 'grin', skin: 1 }] };
+    var OPT = { control: 'phones', p2: 'human', days: 20, music: 'lofi', looks: [{ hat: 'cap', face: 'smile', skin: 0 }, { hat: 'hair', face: 'grin', skin: 1 }] };
     var sel = [5, 6];                    // gewähltes Grundstück je Spieler
     var msgs = [null, null];             // letzte Rückmeldung je Spieler (fürs Handy)
     var logs = [[], []];                 // Aktionsprotokoll je Spieler (für den TV im Handy-Modus)
@@ -38,29 +38,19 @@
     window.addEventListener('resize', fit); fit();
     document.addEventListener('touchstart', function () { document.body.classList.add('touch'); }, { once: true, passive: true });
 
-    /* ================= Sound ================= */
-    var actx = null, muted = false;
-    function tone(f, d, type, v, w) {
-        if (muted) return;
-        try {
-            if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
-            if (actx.state === 'suspended') actx.resume();
-            var t = actx.currentTime + (w || 0), o = actx.createOscillator(), g = actx.createGain();
-            o.type = type || 'sine'; o.frequency.setValueAtTime(f, t);
-            g.gain.setValueAtTime(v || 0.07, t); g.gain.exponentialRampToValueAtTime(0.0008, t + d);
-            o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + d + 0.02);
-        } catch (e) { }
-    }
-    function sfx(k) {
-        if (k === 'move') tone(660, 0.05, 'sine', 0.03);
-        else if (k === 'click') tone(880, 0.07, 'triangle', 0.06);
-        else if (k === 'no') { tone(220, 0.12, 'square', 0.04); tone(180, 0.14, 'square', 0.04, 0.09); }
-        else if (k === 'coin') { tone(988, 0.08, 'triangle', 0.06); tone(1319, 0.2, 'triangle', 0.06, 0.07); }
-        else if (k === 'build') { [392, 523, 659, 784].forEach(function (f, i) { tone(f, 0.12, 'square', 0.035, i * 0.06); }); tone(1047, 0.25, 'triangle', 0.06, 0.26); }
-        else if (k === 'win') { [523, 659, 784, 1047].forEach(function (f, i) { tone(f, 0.25, 'triangle', 0.07, i * 0.11); }); }
-        else if (k === 'badge') { [784, 988, 1175, 1568].forEach(function (f, i) { tone(f, 0.22, 'square', 0.035, i * 0.07); }); }
-        else if (k === 'pop') { tone(520, 0.06, 'square', 0.04); tone(780, 0.09, 'triangle', 0.06, 0.05); }
-        else if (k === 'bell') { tone(1568, 0.4, 'sine', 0.06); tone(2093, 0.5, 'sine', 0.04, 0.1); }
+    /* ================= Sound & Musik (audio.js) ================= */
+    var AU = window.NSAUDIO, muted = false, curMusic = 'plan', audioUnlocked = false;
+    function sfx(k) { AU.sfx(k); }
+    var MUS = { lofi: { plan: 'lofiMorning', day: 'lofiDay', evening: 'lofiEvening' },
+                chip: { plan: 'chipPlan', day: 'chipKiez', evening: 'chipPlan' },
+                phonk: { plan: 'phonkChill', day: 'phonkKiez', evening: 'phonkChill' } };
+    try { var ms = localStorage.getItem('kk_music'); if (ms) OPT.music = ms; } catch (e) { }
+    /* mode: 'plan' | 'day' | 'evening' */
+    function music(mode) {
+        curMusic = mode || curMusic;
+        var st = OPT.music || 'lofi';
+        if (st === 'off' || !MUS[st]) { AU.music(null); return; }
+        AU.music(MUS[st][curMusic], curMusic === 'evening' ? 0.85 : 1);
     }
     var toastT = null;
     function toast(m) { var el = document.getElementById('toast'); el.innerHTML = m; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { el.classList.remove('on'); }, 2400); }
@@ -114,6 +104,7 @@
     }
     app.addEventListener('click', function (e) { var el = e.target.closest('[data-f]'); if (el) { setFocus(el); act(el); } });
     document.addEventListener('keydown', function (e) {
+        AU.unlock(); if (!audioUnlocked) { audioUnlocked = true; music(); }
         var k = e.key, c = e.keyCode;
         if (k === 'ArrowUp' || c === 38) { e.preventDefault(); move('up'); }
         else if (k === 'ArrowDown' || c === 40) { e.preventDefault(); move('down'); }
@@ -121,12 +112,12 @@
         else if (k === 'ArrowRight' || c === 39) { e.preventDefault(); move('right'); }
         else if (k === 'Enter' || k === ' ' || c === 13 || c === 23) { e.preventDefault(); if (!e.repeat) act(focused); }
         else if (k === 'Escape' || k === 'Backspace') { e.preventDefault(); window.tvBack(); }
-        else if (k === 'm') { muted = !muted; toast(muted ? 'Ton aus' : 'Ton an'); }
+        else if (k === 'm') { muted = !muted; AU.setMuted(muted); toast(muted ? 'Ton aus' : 'Ton an'); }
     }, true);
     window.tvBack = function () { var m = app.querySelector('.modal'); if (m) { closeModal(); return true; } if (backFn) { var r = backFn(); return r !== false; } return false; };
     window.tvKey = function (n) {
         if (n === 'playpause') { act(focused); return true; }
-        if (n === 'menu') { muted = !muted; toast(muted ? 'Ton aus' : 'Ton an'); return true; }
+        if (n === 'menu') { muted = !muted; AU.setMuted(muted); toast(muted ? '🔇 Ton aus' : '🔊 Ton an'); return true; }
         if (n === 'ff' && phase === 'day') { H.fast(); return true; }
         return true;
     };
@@ -235,6 +226,13 @@
         return '<div class="logo">' + word('KIEZ', 'k1') + '<br>' + word('KÖNIGE', 'k2') + '</div>';
     }
 
+    /* ================= Sterne & Tagesaufgabe ================= */
+    function stars(r) { r = r || 3.5; return '⭐ ' + r.toFixed(1).replace('.', ','); }
+    function missionHtml(pi, compact) {
+        var m = ST && ST.missions && ST.missions[pi]; if (!m) return '';
+        return '<div class="mission' + (compact ? ' small' : '') + '">🎯 <b>Tagesaufgabe</b>' + (compact ? '' : ' · ' + esc(ST.players[pi].name)) + ': ' + esc(m.text) + ' <span class="gold">+' + eur(m.reward) + '</span></div>';
+    }
+
     /* ================= Titel ================= */
     function demoCity() {
         var d = S.newGame({ days: 20 }, 7);
@@ -244,7 +242,7 @@
         return d;
     }
     function title() {
-        phase = 'title'; ST = null;
+        phase = 'title'; ST = null; music('plan');
         C.sync(demoCity()); C.setWeather('sun'); C.setTime(0.35); applyLooks();
         var sv = loadSave();
         var html = '<div class="shade"></div><div class="col grow" style="width:560px;justify-content:center;gap:20px;position:relative">' +
@@ -293,6 +291,7 @@
             opt('Steuerung', 'control', [['phones', '📱 Handys', 'gleichzeitig'], ['remote', '📺 Fernbedienung', 'abwechselnd']]) +
             opt('Spieler 2', 'p2', [['human', '🙂 Mensch', 'zu zweit'], ['cpu-easy', '🤖 Computer', 'leicht'], ['cpu', '🤖 Computer', 'stark']]) +
             opt('Spieldauer', 'days', [[10, '10 Tage', '~20 Min.'], [20, '20 Tage', '~40 Min.'], [30, '30 Tage', '~60 Min.']]) +
+            opt('Musik', 'music', [['lofi', '☕ Lo-Fi', 'gemütlich'], ['chip', '🎵 Chiptune', 'fröhlich'], ['phonk', '🔊 Phonk', 'cool'], ['off', '🔇 Aus', '']]) +
             (OPT.control === 'phones' && !phonesOk ? '<div class="card" style="border-color:#7f1d1d;width:760px">Der Handy-Modus braucht die Kiez-Könige-App auf dem Fernseher (oder den Test-Server). Wähle sonst „Fernbedienung“.</div>' : '') +
             '<div class="row" style="gap:16px;margin-top:8px">' + btn('Los geht\'s!', 'start', null, { cls: 'gold', auto: true, dis: OPT.control === 'phones' && !phonesOk, why: 'Handy-Modus hier nicht verfügbar.' }) + btn('🎨 Avatare', 'looks') + btn('Zurück', 'title') + '</div>' +
             '</div>';
@@ -300,7 +299,9 @@
     }
     H.opt = function (v, el) {
         var parts = v.split('|'), key = parts[0], val = key === 'days' ? +parts[1] : parts[1];
-        OPT[key] = val; ctx.keep = el.getAttribute('data-key'); setup(); ctx.keep = null;
+        OPT[key] = val; ctx.keep = el.getAttribute('data-key');
+        if (key === 'music') { try { localStorage.setItem('kk_music', val); } catch (e) { } music('plan'); }
+        setup(); ctx.keep = null;
     };
     H.start = function () {
         var cpu2 = OPT.p2 !== 'human';
@@ -339,7 +340,7 @@
 
     /* ================= Planung ================= */
     function planStart() {
-        phase = 'plan';
+        phase = 'plan'; music('plan');
         ST.phase = 'plan';
         C.setWeather(ST.weather); C.setTime(0.12); C.clearDay(); C.sync(ST);
         ST.players.forEach(function (p, i) { p.ready = false; if (p.cpu) { var log = S.cpuPlan(ST, i); logs[i] = log.length ? log.map(cpuLogText) : ['Plant heute nichts Neues.']; } });
@@ -373,7 +374,7 @@
         phase = 'plan'; planPi = pi;
         C.select(pi, sel[pi]); C.select(1 - pi, -1); C.focus(sel[pi]);
         var html = hud() + '<div class="mapzone" data-f data-map data-a="mapok" data-key="map" style="position:absolute;left:24px;top:110px;width:770px;bottom:24px;border-radius:20px"></div>' +
-            '<div class="maphint card small"><b>◀▶▲▼</b> Grundstück wählen · <b>OK</b> Aktionen · <b>Zurück</b> Pause</div>' +
+            '<div class="maphint col" style="gap:8px;max-width:760px">' + missionHtml(pi) + '<div class="card small"><b>◀▶▲▼</b> Grundstück wählen · <b>OK</b> Aktionen · <b>Zurück</b> Pause</div></div>' +
             '<div class="panel">' + panelHtml(pi) + '</div>';
         show(html, { three: 'plan', back: pauseMenu, keep: ctx.keep || 'map' });
         ctx.keep = null;
@@ -407,12 +408,14 @@
             var t = K.types[pl.type], l = pl.last, upc = S.upgradeCost(pl);
             info += '<div class="row" style="align-items:center;gap:10px"><span style="font-size:40px">' + t.icon + '</span><div class="grow"><b style="font-size:22px">' + t.name + '</b><div class="small mute">' + K.levelNames[pl.level] + ' · bis ' + S.capOf(pl) + ' Kunden/Tag</div></div></div>' +
                 '<div class="pricebar">' + btn('−', 'price', -1, { style: 'width:64px;justify-content:center;font-size:30px' }) + '<div class="p">' + price(pl.price) + '<div class="small mute">üblich ' + price(t.ref) + '</div></div>' + btn('+', 'price', 1, { style: 'width:64px;justify-content:center;font-size:30px' }) + '</div>' +
+                '<div class="stat"><span>Kunden-Bewertung</span><b>' + stars(pl.rating) + (l && l.ratingDelta ? ' <span class="small ' + (l.ratingDelta > 0 ? 'good' : 'bad') + '">' + (l.ratingDelta > 0 ? '▲' : '▼') + '</span>' : '') + '</b></div>' +
                 (l ? '<div class="stat"><span>Gestern verkauft</span><b>' + l.sales + ' / ' + l.cap + '</b></div>' + (l.lost ? '<div class="stat"><span>Leer ausgegangen</span><b class="bad">' + l.lost + '</b></div>' : '') + '<div class="stat"><span>Gewinn gestern</span><b class="' + (l.profit >= 0 ? 'good' : 'bad') + '">' + sgn(l.profit) + '</b></div>' : '<div class="small mute">Öffnet heute zum ersten Mal.</div>') +
                 '<div class="row" style="margin-top:auto">' + btn(upc === null ? 'Voll ausgebaut' : 'Ausbauen <span class="sub">' + eur(upc) + ' · bis ' + t.cap[pl.level + 1] + ' Kunden</span>', 'upgrade', null, { dis: upc === null || p.cash < upc, why: upc === null ? 'Schon Stufe 3.' : 'Zu wenig Geld.', style: 'flex:1.4;flex-direction:column;align-items:flex-start' }) +
                 btn('Verkaufen <span class="sub">+' + eur(pl.invested * K.sellBack) + '</span>', 'sellAsk', null, { cls: 'danger', style: 'flex:1;flex-direction:column;align-items:flex-start' }) + '</div>';
         } else {
             var o = ST.players[pl.owner], tt = K.types[pl.type];
             info += '<div class="row" style="align-items:center;gap:10px"><span style="font-size:40px">' + tt.icon + '</span><div><b style="font-size:22px;color:' + o.color + '">' + tt.name + ' von ' + esc(o.name) + '</b><div class="small mute">' + K.levelNames[pl.level] + ' · Preis ' + price(pl.price) + '</div></div></div>' +
+                '<div class="stat"><span>Bewertung</span><b>' + stars(pl.rating) + '</b></div>' +
                 (pl.last ? '<div class="stat"><span>Gestern verkauft</span><b>' + pl.last.sales + ' / ' + pl.last.cap + '</b></div>' : '') +
                 '<div class="small mute">Tipp: Eine eigene ' + tt.name + ' daneben teilt sich die Kundschaft mit diesem Laden – lieber eine andere Art bauen?</div>';
         }
@@ -474,6 +477,7 @@
             var p = ST.players[i];
             return '<div class="card pstat" style="border-color:' + p.color + '"><div class="row" style="align-items:center"><b class="grow" style="color:' + p.color + ';font-size:22px">' + (p.cpu ? '🤖 ' : '📱 ') + esc(p.name) + '</b><span class="ready" id="rd' + i + '">' + readyTxt(i) + '</span></div>' +
                 '<div class="row" style="justify-content:space-between"><span>Geld</span><b id="cash' + i + '">' + eur(p.cash) + '</b></div><div class="row" style="justify-content:space-between"><span>Vermögen</span><b id="wl' + i + '">' + eur(S.wealth(ST, i)) + '</b></div>' +
+                (p.cpu ? '' : missionHtml(i, true)) +
                 '<div class="log" id="log' + i + '">' + (logs[i] || []).map(esc).join('<br>') + '</div></div>';
         }
         var html = hud() + '<div class="panel" style="width:400px">' + pcard(0) + pcard(1) +
@@ -534,6 +538,7 @@
 
     /* ================= Tag ================= */
     function startDay() {
+        if (phase !== 'day') music('day');
         if (phase === 'day') return;
         phase = 'day';
         ST.players.forEach(function (p) { p.ready = true; });
@@ -608,6 +613,8 @@
 
     /* ================= Abend ================= */
     function evening() {
+        music('evening');
+        if (ST.report && ST.report.players.some(function (r, i) { return r.mission && r.mission.ok && !ST.players[i].cpu; })) later(function () { sfx('mission'); }, 900);
         phase = 'evening';
         sfx('bell');
         C.setTime(0.95);
@@ -623,6 +630,7 @@
                 (best ? '<div class="small">🏆 Bester Laden: <b>' + K.types[ST.plots[best.id].type].name + ' (' + plotName(best.id) + ')</b> ' + sgn(best.profit) + '</div>' : '') +
                 (r.lost ? '<div class="small bad">😞 ' + r.lost + ' Kunden gingen leer aus (ausverkauft)</div>' : '') +
                 (r.autoLoan ? '<div class="small bad">🏦 Konto im Minus – Notkredit ' + eur(r.autoLoan) + '</div>' : '') +
+                (r.mission ? '<div class="small ' + (r.mission.ok ? 'good' : 'mute') + '">🎯 ' + (r.mission.ok ? 'Aufgabe geschafft! <b>+' + eur(r.mission.reward) + '</b>' : 'Aufgabe verpasst: ' + esc(r.mission.text)) + '</div>' : '') +
                 badgeRow(i) + '<div class="tips">' + r.tips.slice(0, 2).map(function (t) { return '<div><span>💡</span><span>' + esc(t.x) + '</span></div>'; }).join('') + '</div></div>';
         }
         var f = K.weather[ST.forecast];
@@ -650,7 +658,7 @@
         clearSave();
         var w = [S.wealth(ST, 0), S.wealth(ST, 1)], broke = S.bankrupt(ST);
         var win = broke >= 0 ? 1 - broke : (w[0] === w[1] ? -1 : (w[0] > w[1] ? 0 : 1));
-        sfx('win');
+        sfx('win'); later(function () { music('evening'); }, 1800);
         if (win >= 0) { checkBadges(win, { win: win }); C.celebrate(win, ST); }
         var max = Math.max.apply(null, ST.players[0].history.concat(ST.players[1].history, [1]));
         function line(i) {
@@ -684,7 +692,8 @@
             timeLeft: phase === 'plan' && OPT.control === 'phones' ? Math.max(0, Math.round((planDeadline - Date.now()) / 1000)) : null,
             me: { i: pi, name: p.name, color: p.color, cash: hide ? live.cash0[pi] : p.cash, loan: p.loan, wealth: hide ? live.wealth0[pi] : S.wealth(ST, pi), mkt: p.mkt, ready: p.ready, sel: sel[pi] },
             rival: { name: o.name, color: o.color, wealth: hide ? live.wealth0[1 - pi] : S.wealth(ST, 1 - pi), ready: o.ready, cpu: o.cpu },
-            plots: ST.plots.map(function (pl) { return { id: pl.id, owner: pl.owner, type: pl.type, level: pl.level, price: pl.price, invested: pl.invested, last: pl.last ? { sales: pl.last.sales, cap: pl.last.cap, lost: pl.last.lost, profit: pl.last.profit } : null }; }),
+            mission: ST.missions && ST.missions[pi] ? { text: ST.missions[pi].text, reward: ST.missions[pi].reward } : null,
+            plots: ST.plots.map(function (pl) { return { id: pl.id, owner: pl.owner, type: pl.type, level: pl.level, price: pl.price, invested: pl.invested, rating: pl.rating, last: pl.last ? { sales: pl.last.sales, cap: pl.last.cap, lost: pl.last.lost, profit: pl.last.profit } : null }; }),
             msg: msgs[pi], look: lookOf(pi),
             badges: (p.badges || []).map(function (id) { var b = badgeOf(id); return b ? [b[1], b[2]] : null; }).filter(Boolean)
         };
@@ -694,7 +703,7 @@
             K.typeOrder.forEach(function (t) { var f = S.forecastBuild(ST, sel[pi], t, pi); s.forecast2[t] = { sales: f.sales, profit: f.profit }; });
         }
         if (phase === 'day' && live) s.live = { rev: Math.round(live.rev[pi]), t: live.t };
-        if (phase === 'evening' && ST.report) { var r = ST.report.players[pi]; s.report = { rev: r.rev, profit: r.profit, sales: r.sales, lost: r.lost, tips: r.tips.map(function (t) { return t.x; }) }; }
+        if (phase === 'evening' && ST.report) { var r = ST.report.players[pi]; s.report = { rev: r.rev, profit: r.profit, sales: r.sales, lost: r.lost, tips: r.tips.map(function (t) { return t.x; }), mission: r.mission }; }
         if (phase === 'end') { var w = [S.wealth(ST, 0), S.wealth(ST, 1)]; s.win = w[pi] > w[1 - pi] ? 'win' : w[pi] < w[1 - pi] ? 'lose' : 'draw'; }
         return s;
     }
